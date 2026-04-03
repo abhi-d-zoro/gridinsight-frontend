@@ -1,13 +1,20 @@
 import { useState, useContext } from "react";
-import { login as loginApi } from "../api/authApi";
+import { login as loginApi, requestPasswordReset } from "../api/authApi";
 import { AuthContext } from "../auth/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import "../styles/login.css";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+
+  // 🔹 Forgot password states
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotMessage, setForgotMessage] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -23,88 +30,240 @@ export default function LoginPage() {
     try {
       setError("");
 
-      // ✅ Backend login
       const response = await loginApi(email, password);
       const token = response.accessToken;
-
-      // ✅ Decode JWT
       const decoded = jwtDecode(token);
 
-      // ✅ Safely extract role
-      let role = null;
-      if (Array.isArray(decoded.roles) && decoded.roles.length > 0) {
-        role = decoded.roles[0].replace("ROLE_", "");
-      }
+      const role = decoded.roles?.[0]?.replace("ROLE_", "");
+      if (!role) throw new Error("Role missing");
 
-      if (!role) {
-        throw new Error("Role not found in token");
-      }
-
-      // ✅ Store accessToken + role + refreshToken
       login(token, role, response.refreshToken);
 
-      // ✅ Role-based navigation
-      if (role === "ADMIN") {
-        navigate("/admin");
-      } else if (role === "ANALYST") {
-        navigate("/analyst");
-      } else if (role === "ESG") {
-        navigate("/esg");
-      } else {
-        navigate("/login");
+      switch (role) {
+        case "ADMIN":
+          navigate("/admin");
+          break;
+        case "ANALYST":
+          navigate("/analyst");
+          break;
+        case "PLANNER":
+          navigate("/planner");
+          break;
+        case "ESG":
+          navigate("/esg");
+          break;
+        default:
+          navigate("/login");
       }
-
-      console.log("LOGIN SUCCESS ✅", role);
-
-    } catch (err) {
-      console.error("LOGIN FAILED ❌", err);
-      setError(err.response?.data?.message || "Login failed");
+    } catch {
+      setError("Invalid credentials");
     }
   };
 
   return (
-    <form
-      onSubmit={handleLogin}
-      style={{
-        width: "320px",
-        margin: "120px auto",
-        padding: "24px",
-        border: "1px solid #e5e7eb",
-        borderRadius: "8px",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-      }}
-    >
-      <h2>Login</h2>
+    <div style={pageStyle}>
+      <form onSubmit={handleLogin} style={glassCardStyle}>
+        <h1 style={centeredTitle}>GridInsight Login</h1>
 
-      {error && (
-        <p style={{ color: "red", fontSize: "14px" }}>
-          {error}
-        </p>
+        {error && <p style={errorStyle}>{error}</p>}
+
+        {/* Email */}
+        <div style={fieldWrapper}>
+          <label style={fieldLabel}>Email</label>
+          <div style={inputLine}>
+            <span style={icon}>👤</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={underlineInput}
+            />
+          </div>
+        </div>
+
+        {/* Password */}
+        <div style={fieldWrapper}>
+          <label style={fieldLabel}>Password</label>
+          <div style={inputLine}>
+            <span style={icon}>🔒</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={underlineInput}
+            />
+          </div>
+        </div>
+
+        {/* Forgot Password */}
+        <div
+          style={forgotWrapper}
+          onClick={() => setShowForgotModal(true)}
+        >
+          Forgot password?
+        </div>
+
+        <button type="submit" style={loginButtonStyle}>
+          LOGIN
+        </button>
+      </form>
+
+      {/* ================= FORGOT PASSWORD MODAL ================= */}
+      {showForgotModal && (
+        <div style={forgotOverlay}>
+          <div style={forgotModal}>
+            <h3 style={{ marginBottom: "16px" }}>Reset Password</h3>
+
+            {forgotMessage ? (
+              <p style={{ color: "#86efac", fontSize: "14px" }}>
+                {forgotMessage}
+              </p>
+            ) : (
+              <>
+                <label style={fieldLabel}>Email</label>
+                <input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  style={{
+                    ...underlineInput,
+                    borderBottom: "1px solid rgba(255,255,255,0.35)",
+                    paddingBottom: "6px",
+                  }}
+                />
+
+                <button
+                  style={{ ...loginButtonStyle, marginTop: "18px" }}
+                  disabled={forgotLoading}
+                  onClick={async () => {
+                    if (!forgotEmail.trim()) return;
+
+                    try {
+                      setForgotLoading(true);
+                      const res = await requestPasswordReset(forgotEmail);
+                      setForgotMessage(res.message);
+                    } catch {
+                      setForgotMessage("Something went wrong.");
+                    } finally {
+                      setForgotLoading(false);
+                    }
+                  }}
+                >
+                  {forgotLoading ? "Sending..." : "Send Reset Link"}
+                </button>
+              </>
+            )}
+
+            <button
+              style={cancelBtn}
+              onClick={() => {
+                setShowForgotModal(false);
+                setForgotEmail("");
+                setForgotMessage("");
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
-
-      <div style={{ marginBottom: "10px" }}>
-        <label>Email</label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={{ width: "100%", padding: "8px" }}
-        />
-      </div>
-
-      <div style={{ marginBottom: "10px" }}>
-        <label>Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{ width: "100%", padding: "8px" }}
-        />
-      </div>
-
-      <button type="submit" style={{ width: "100%", padding: "8px" }}>
-        Login
-      </button>
-    </form>
+    </div>
   );
 }
+
+/* ===================== STYLES ===================== */
+
+const pageStyle = {
+  minHeight: "100vh",
+  background:
+    "linear-gradient(135deg, #0f172a 0%, #064e3b 50%, #22c55e 100%)",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+};
+
+const glassCardStyle = {
+  width: "100%",
+  maxWidth: "340px",
+  padding: "44px 36px",
+  borderRadius: "18px",
+  background: "rgba(15, 23, 42, 0.52)",
+  backdropFilter: "blur(12px)",
+  boxShadow: "0 16px 32px rgba(0,0,0,0.4)",
+};
+
+const centeredTitle = {
+  color: "#fff",
+  textAlign: "center",
+  marginBottom: "36px",
+};
+
+const errorStyle = {
+  color: "#f87171",
+  textAlign: "center",
+  marginBottom: "16px",
+};
+
+const fieldWrapper = { marginBottom: "20px" };
+const fieldLabel = { fontSize: "13px", color: "#e5e7eb" };
+
+const inputLine = {
+  display: "flex",
+  alignItems: "center",
+  borderBottom: "1px solid rgba(255,255,255,0.35)",
+};
+
+const icon = { marginRight: "8px" };
+
+const underlineInput = {
+  flex: 1,
+  background: "transparent",
+  border: "none",
+  color: "#fff",
+  outline: "none",
+};
+
+const forgotWrapper = {
+  textAlign: "right",
+  marginBottom: "28px",
+  fontSize: "12px",
+  cursor: "pointer",
+  color: "#86efac",
+};
+
+const loginButtonStyle = {
+  width: "100%",
+  padding: "12px",
+  borderRadius: "30px",
+  border: "none",
+  background: "#22c55e",
+  color: "#fff",
+  cursor: "pointer",
+};
+
+const forgotOverlay = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.7)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 9999,
+};
+
+const forgotModal = {
+  width: "100%",
+  maxWidth: "320px",
+  padding: "28px",
+  borderRadius: "16px",
+  background: "rgba(15, 23, 42, 0.95)",
+  boxShadow: "0 20px 50px rgba(0,0,0,0.6)",
+};
+
+const cancelBtn = {
+  marginTop: "12px",
+  background: "transparent",
+  border: "none",
+  color: "#94a3b8",
+  cursor: "pointer",
+};

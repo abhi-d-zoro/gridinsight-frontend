@@ -1,0 +1,33 @@
+/* ✅ Fix browser autofill white background */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+
+/* Prevent browser autofill white background
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+} */
+
+/* ✅ Mobile responsiveness */
+@media (max-width: 480px) {
+  .login-card {
+    padding: 36px 20px !important;
+    border-radius: 14px !important;
+  }
+
+  .login-title {
+    font-size: 24px !important;
+    margin-bottom: 32px !important;
+  }
+}

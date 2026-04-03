@@ -1,31 +1,33 @@
-export default function Header({ title, onLogout }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        padding: "16px 24px",
-        backgroundColor: "#1f2937",
-        color: "white",
-      }}
-    >
-      <h2 style={{ margin: 0 }}>{title}</h2>
+import "./Header.css";
 
-      {onLogout && (
-        <button
-          onClick={onLogout}
-          style={{
-            padding: "8px 12px",
-            backgroundColor: "#ef4444",
-            color: "white",
-            border: "none",
-            cursor: "pointer",
-          }}
-        >
+export default function Header({
+  title,
+  onLogout,
+  showAuditLogs = false,
+  showNotifications = false,
+}) {
+  return (
+    <header className="app-header">
+      {/* LEFT */}
+      <div className="header-left">
+        <span className="app-logo">GridInsight</span>
+        <h1 className="header-title"> | {title}</h1>
+      </div>
+
+      {/* RIGHT */}
+      <div className="header-right">
+        {showAuditLogs && (
+          <button className="header-btn">Audit Logs</button>
+        )}
+
+        {showNotifications && (
+          <button className="header-btn">Notifications</button>
+        )}
+
+        <button className="logout-btn" onClick={onLogout}>
           Logout
         </button>
-      )}
-    </div>
+      </div>
+    </header>
   );
 }

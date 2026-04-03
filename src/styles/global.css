@@ -1,0 +1,15 @@
+:root {
+  --color-bg-dark: #0f172a;
+  --color-green-primary: #22c55e;
+  --color-green-hover: #16a34a;
+  --color-card-bg: #ffffff;
+  --color-text-dark: #0f172a;
+  --color-text-muted: #64748b;
+  --color-error: #ef4444;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--color-bg-dark);
+}
