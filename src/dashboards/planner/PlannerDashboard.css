@@ -1,105 +1,205 @@
-.planner-dashboard {
-  display: flex;
-  background-color: #111827;
-  color: #f9fafb;
-  min-height: 100vh;
-  font-family: 'Inter', sans-serif;
-}
+/* Planner Dashboard - Unified Layout */
 
-/* Sidebar */
-.sidebar {
-  width: 220px;
-  background: #1f2937;
-  color: #9ca3af;
-  min-height: 100vh;
-  padding: 1rem;
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-.sidebar h2 {
-  color: #10b981;
-  margin-bottom: 1rem;
-}
+/* ===================== PLANNER CONTENT ===================== */
 
-.sidebar ul {
-  list-style: none;
-  padding: 0;
-}
-
-.sidebar ul li {
-  padding: 0.75rem;
-  cursor: pointer;
-  border-left: 4px solid transparent;
-  transition: background 0.2s ease;
-}
-
-.sidebar ul li:hover {
-  background: #111827;
-}
-
-.sidebar ul li.active {
-  color: #10b981;
-  border-left: 4px solid #10b981;
-  background: #111827;
-}
-
-/* Content */
-.content {
+.planner-content {
   flex: 1;
-  padding: 1rem 2rem;
-}
-
-/* Header */
-.planner-header {
+  padding: 20px;
+  overflow-y: auto;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  margin-bottom: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
 }
 
-.planner-header h1 {
-  color: #10b981;
-  font-weight: 700;
-}
+/* ===================== CARDS ===================== */
 
-.planner-header button {
-  background-color: #2563eb;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  transition: background-color 0.2s ease;
-  color: #fff;
-}
-
-.planner-header button:hover {
-  background-color: #1d4ed8;
-}
-
-/* Cards */
 .cards {
   display: flex;
   gap: 1rem;
+  width: 100%;
+  margin-bottom: 2rem;
 }
 
 .card {
   flex: 1;
-  background: #1f2937;
-  padding: 1rem;
+  background: #f9fafb;
+  padding: 1.5rem;
   border-radius: 0.5rem;
   text-align: center;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.dashboard-page.dark .card {
+  background: #1f2937;
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .card:hover {
   transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-page.dark .card:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
 .card h3 {
   margin: 0.5rem 0;
-  color: #9ca3af;
+  color: #111827;
+  font-weight: 600;
+}
+
+.dashboard-page.dark .card h3 {
+  color: #f9fafb;
 }
 
 .card p {
-  font-size: 1.25rem;
-  font-weight: bold;
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.dashboard-page.dark .card p {
+  color: #9ca3af;
+}
+
+.card .value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #10b981;
+  margin-bottom: 0.5rem;
+}
+
+.dashboard-page.dark .card .value {
+  color: #22c55e;
+}
+
+/* ===================== TABLES ===================== */
+
+.table-container {
+  width: 100%;
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.dashboard-page.dark .table-container {
+  background: #1f2937;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.table-container h3 {
+  padding: 1rem;
+  margin: 0;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  color: #111827;
+  font-weight: 600;
+}
+
+.dashboard-page.dark .table-container h3 {
+  background: #111827;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  color: #f9fafb;
+}
+
+.table-container table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-container th,
+.table-container td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.dashboard-page.dark .table-container th,
+.dashboard-page.dark .table-container td {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.table-container th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #111827;
+}
+
+.dashboard-page.dark .table-container th {
+  background: #1f2937;
+  color: #f9fafb;
+}
+
+.table-container td {
+  color: #6b7280;
+}
+
+.dashboard-page.dark .table-container td {
+  color: #9ca3af;
+}
+
+/* ===================== FILTERS ===================== */
+
+.filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.filters select,
+.filters input {
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 0.375rem;
+  background: #ffffff;
+  color: #111827;
+  font-size: 0.875rem;
+}
+
+.dashboard-page.dark .filters select,
+.dashboard-page.dark .filters input {
+  background: #1f2937;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f9fafb;
+}
+
+.filters select:focus,
+.filters input:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+/* ===================== RESPONSIVE ===================== */
+
+@media (max-width: 768px) {
+  .planner-content {
+    padding: 16px;
+  }
+
+  .cards {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .filters {
+    flex-direction: column;
+  }
+
+  .filters select,
+  .filters input {
+    width: 100%;
+  }
 }
 
 /* Tables */

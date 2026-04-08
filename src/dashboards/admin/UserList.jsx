@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import adminApi from "../../api/adminApi";
 import EditUser from "./EditUser";
 import CreateUser from "./CreateUser";
@@ -20,11 +20,7 @@ export default function UsersList() {
   const [searchText, setSearchText] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
 
-  useEffect(() => {
-    fetchUsers();
-  }, [page, searchText, roleFilter]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       const res = await adminApi.get("/users", {
         params: {
@@ -39,124 +35,146 @@ export default function UsersList() {
     } catch (err) {
       console.error("Failed to fetch users", err);
     }
-  };
+  }, [page, roleFilter, searchText]);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      await fetchUsers();
+    };
+
+    loadUsers();
+  }, [fetchUsers]);
 
   return (
     <>
-      {/* ✅ USER TOOLBAR */}
-      <div className="user-toolbar">
-        <input
-          type="text"
-          placeholder="Search users..."
-          value={searchText}
-          onChange={(e) => {
-            setSearchText(e.target.value);
-            setPage(0);
-          }}
-        />
+      <div className="users-list-wrapper">
+        {/* ✅ USER TOOLBAR */}
+        <div className="user-toolbar">
+          <input
+            type="text"
+            placeholder="Search users..."
+            value={searchText}
+            onChange={(e) => {
+              setSearchText(e.target.value);
+              setPage(0);
+            }}
+          />
 
-        <select
-          value={roleFilter}
-          onChange={(e) => {
-            setRoleFilter(e.target.value);
-            setPage(0);
-          }}
-        >
-          <option value="">Filter by Role</option>
-          <option value="ADMIN">Admin</option>
-          <option value="GRID_ANALYST">Grid Analyst</option>
-          <option value="ASSET_MANAGER">Asset Manager</option>
-          <option value="PLANNER">Planner</option>
-          <option value="ESG">ESG</option>
-          <option value="OPERATOR">Operator</option>
-          <option value="TECHNICIAN">Technician</option>
-        </select>
+          <select
+            value={roleFilter}
+            onChange={(e) => {
+              setRoleFilter(e.target.value);
+              setPage(0);
+            }}
+          >
+            <option value="">Filter by Role</option>
+            <option value="ADMIN">Admin</option>
+            <option value="GRID_ANALYST">Grid Analyst</option>
+            <option value="ASSET_MANAGER">Asset Manager</option>
+            <option value="PLANNER">Planner</option>
+            <option value="ESG">ESG</option>
+            <option value="OPERATOR">Operator</option>
+            <option value="TECHNICIAN">Technician</option>
+          </select>
 
-        <button
-          className="action-btn user-create-btn"
-          onClick={() => setShowCreateModal(true)}
-        >
-          + Add User
-        </button>
-      </div>
+          <button
+            className="action-btn user-create-btn"
+            onClick={() => setShowCreateModal(true)}
+          >
+            + Add User
+          </button>
+        </div>
 
-      {/* ✅ USERS TABLE */}
-      <table className="users-table">
-        <thead>
-          <tr className="userlist-col">
-            <th>Name</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {users.map((u) => (
-            <tr key={u.id}>
-              <td colSpan={5}>
-                <div
-                  className={`user-row ${
-                    hoveredRow === u.id ? "hovered" : ""
-                  }`}
-                  onMouseEnter={() => setHoveredRow(u.id)}
-                  onMouseLeave={() => setHoveredRow(null)}
-                >
-                  <div className="name-cell">
-                    <div className="avatar">
-                      {u.name?.charAt(0).toUpperCase()}
-                    </div>
-                    {u.name}
-                  </div>
-
-                  <div className="email">{u.email}</div>
-                  <span className="role-badge">{u.role}</span>
-
-                  <span
-                    className={`status-badge ${
-                      u.status === "ACTIVE" ? "active" : "inactive"
-                    }`}
-                  >
-                    ● {u.status}
-                  </span>
-
-                  <div className="row-actions">
-                    <button
-                      className="action-btn user-edit-btn"
-                      onClick={() => setEditingUser(u)}
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      className="action-btn user-delete-btn"
-                      onClick={() => setDeletingUser(u)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </td>
+        {/* ✅ USERS TABLE */}
+        <table className="users-table">
+          <thead>
+            <tr className="userlist-col">
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
 
-      {/* ✅ PAGINATION */}
-      <div className="pagination">
-        <button disabled={page === 0} onClick={() => setPage(page - 1)}>
-          Previous
-        </button>
-        <span>
-          Page {page + 1} of {totalPages}
-        </span>
-        <button
-          disabled={page + 1 >= totalPages}
-          onClick={() => setPage(page + 1)}
-        >
-          Next
-        </button>
+          <tbody>
+            {users.length === 0 ? (
+              <tr>
+                <td colSpan={5}>
+                  <div className="empty-state">
+                    <div className="empty-icon">👥</div>
+                    <h3>No Users Found</h3>
+                    <p>No users match your search criteria. Try adjusting your filters or search terms.</p>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              users.map((u) => (
+              <tr key={u.id}>
+                <td colSpan={5}>
+                  <div
+                    className={`user-row ${
+                      hoveredRow === u.id ? "hovered" : ""
+                    }`}
+                    onMouseEnter={() => setHoveredRow(u.id)}
+                    onMouseLeave={() => setHoveredRow(null)}
+                  >
+                    <div className="name-cell">
+                      <div className="avatar">
+                        {u.name?.charAt(0).toUpperCase()}
+                      </div>
+                      {u.name}
+                    </div>
+
+                    <div className="email">{u.email}</div>
+                    <span className="role-badge">{u.role}</span>
+
+                    <span
+                      className={`status-badge ${
+                        u.status === "ACTIVE" ? "active" : "inactive"
+                      }`}
+                    >
+                      ● {u.status}
+                    </span>
+
+                    <div className="row-actions">
+                      <button
+                        className="action-btn user-edit-btn"
+                        onClick={() => setEditingUser(u)}
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        className="action-btn user-delete-btn"
+                        onClick={() => setDeletingUser(u)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            ))
+            )}
+          </tbody>
+        </table>
+
+        {/* ✅ PAGINATION */}
+        <div className="pagination">
+          <button disabled={page === 0} onClick={() => setPage(page - 1)}>
+            Previous
+          </button>
+          <span>
+            Page {page + 1} of {totalPages}
+          </span>
+          <button
+            disabled={page + 1 >= totalPages}
+            onClick={() => setPage(page + 1)}
+          >
+            Next
+          </button>
+        </div>
       </div>
 
       {/* ✅ MODALS (rendered via portal internally) */}

@@ -1,8 +1,9 @@
 import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Header from "../components/Header";
 import { AuthContext } from "../auth/AuthContext";
+import DashboardLayout from "../components/DashboardLayout";
 import axiosInstance from "../api/axiosInstance";
+import "./AssetManagerDashboard.css";
  
 export default function AssetManagerDashboard() {
   const { logout, role } = useContext(AuthContext);
@@ -29,7 +30,52 @@ export default function AssetManagerDashboard() {
     end: ""    
   });
   const [trendData, setTrendData] = useState(null);
- 
+
+  // Sidebar configuration
+  const tabs = [
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: "📊",
+      description: "Asset management overview"
+    },
+    {
+      id: "assets",
+      label: "Manage Assets",
+      icon: "⚡",
+      description: "View and update renewable assets"
+    },
+    {
+      id: "trends",
+      label: "Generation Trends",
+      icon: "📈",
+      description: "Analyze energy output history"
+    },
+    {
+      id: "health",
+      label: "Asset Health",
+      icon: "🏥",
+      description: "Monitor downtime and alerts"
+    },
+    {
+      id: "maintenance",
+      label: "Schedule Maintenance",
+      icon: "🔧",
+      description: "Flag assets for inspection"
+    }
+  ];
+
+  const sidebar = {
+    navItems: tabs.map(tab => ({
+      id: tab.id,
+      label: tab.label,
+      icon: tab.icon,
+      description: tab.description,
+      active: activeView === tab.id,
+      onClick: () => setActiveView(tab.id)
+    }))
+  };
+
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -62,6 +108,7 @@ export default function AssetManagerDashboard() {
       setSelectedAssetId(null);
       fetchAssets("MAINTENANCE");
     } catch (error) {
+      console.error("Maintenance schedule error:", error);
       setMessage("Failed to schedule maintenance. Check backend connection.");
     } finally {
       setLoading(false);
@@ -108,13 +155,31 @@ export default function AssetManagerDashboard() {
   }
  
   return (
-    <div style={pageContainerStyle}>
-      <Header title="GridInsight – Asset Manager Dashboard" onLogout={handleLogout} />
- 
-      <div style={{ padding: "32px", maxWidth: "1200px", margin: "0 auto" }}>
-        <h3 style={{ color: "white", fontSize: "24px", margin: "0 0 8px 0" }}>Welcome, Asset Manager</h3>
-        <p style={{ color: "#9ca3af", margin: "0 0 24px 0" }}>Monitor renewable asset performance and scheduling.</p>
- 
+    <DashboardLayout
+      title="Asset Manager Dashboard"
+      onLogout={handleLogout}
+      layout="sidebar"
+      sidebar={sidebar}
+    >
+      {/* Section Header */}
+      <div className="section-header">
+        <div className="section-title-group">
+          <span className="section-icon">
+            {tabs.find(t => t.id === activeView.toLowerCase())?.icon}
+          </span>
+          <div>
+            <h2 className="section-title">
+              {tabs.find(t => t.id === activeView.toLowerCase())?.label}
+            </h2>
+            <p className="section-description">
+              {tabs.find(t => t.id === activeView.toLowerCase())?.description}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Content Area */}
+      <div className="asset-manager-content">
         {message && (
           <div style={message.includes("Error") || message.includes("Failed") ? errorAlertStyle : successAlertStyle}>
             {message}
@@ -306,14 +371,12 @@ export default function AssetManagerDashboard() {
             )}
           </div>
         )}
- 
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
  
 /* ===================== STYLES ===================== */
-const pageContainerStyle = { minHeight: "100vh", background: "#0f172a", color: "white", fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" };
 const gridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "20px" };
 const cardStyle = { padding: "20px", background: "#1e293b", borderRadius: "10px", cursor: "pointer", border: "1px solid rgba(255,255,255,0.05)" };
 const cardTitleStyle = { margin: "0 0 10px 0", color: "#4ade80" };

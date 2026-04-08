@@ -1,60 +1,85 @@
-import React, { useState } from "react";
-import "./PlannerDashboard.css";
+import React, { useState, useContext } from "react";
+import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../../auth/AuthContext";
+import DashboardLayout from "../../components/DashboardLayout";
 import Overview from "./Overview";
 import DayAheadJobs from "./DayAheadJobs";
 import MonthAheadForecast from "./MonthAheadForecast";
 import CapacityPlans from "./CapacityPlans";
 import ForecastAccuracy from "./ForecastAccuracy";
+import "./PlannerDashboard.css";
 
 export default function PlannerDashboard() {
+  const { logout, role } = useContext(AuthContext);
+  const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useState("overview");
   const [zoneFilter, setZoneFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [assetType, setAssetType] = useState("SOLAR");
   const [accuracy, setAccuracy] = useState(null);
 
-  const tabs = [
-    { id: "overview", label: "Overview" },
-    { id: "dayAhead", label: "Day-Ahead Forecast" },
-    { id: "monthAhead", label: "Month-Ahead Forecast" },
-    { id: "capacity", label: "Capacity Plans" },
-    { id: "accuracy", label: "Forecast Accuracy" },
-  ];
-
-  // ✅ Logout handler
   const handleLogout = () => {
-    // Clear any stored auth token/session
-    localStorage.removeItem("authToken");
-    sessionStorage.clear();
-
-    // Redirect to login page
-    window.location.href = "/login";
+    logout();
+    navigate("/login");
   };
 
+  // ✅ RBAC guard
+  if (role !== "PLANNER") {
+    return (
+      <div className="access-denied">
+        <h2>Access Denied</h2>
+        <p>You do not have permission to view this page.</p>
+      </div>
+    );
+  }
+
+  const tabs = [
+    { id: "overview", label: "Overview", icon: "📊", description: "Dashboard overview and key metrics" },
+    { id: "dayAhead", label: "Day-Ahead Forecast", icon: "📅", description: "Day-ahead forecasting and planning" },
+    { id: "monthAhead", label: "Month-Ahead Forecast", icon: "📈", description: "Month-ahead forecasting analysis" },
+    { id: "capacity", label: "Capacity Plans", icon: "⚡", description: "Capacity planning and management" },
+    { id: "accuracy", label: "Forecast Accuracy", icon: "🎯", description: "Forecast accuracy analysis and reporting" },
+  ];
+
+  const sidebar = {
+    header: {
+      icon: "📋",
+      title: "Planner Panel"
+    },
+    navItems: tabs.map(tab => ({
+      id: tab.id,
+      label: tab.label,
+      icon: tab.icon,
+      description: tab.description,
+      active: activeTab === tab.id,
+      onClick: () => setActiveTab(tab.id)
+    }))
+  };
+
+  const getActiveTab = () => tabs.find(t => t.id === activeTab);
+  const currentTab = getActiveTab();
+
   return (
-    <div className="planner-dashboard">
-      <aside className="sidebar">
-        <h2>Planner Dashboard</h2>
-        <ul>
-          {tabs.map(tab => (
-            <li
-              key={tab.id}
-              className={activeTab === tab.id ? "active" : ""}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.label}
-            </li>
-          ))}
-        </ul>
-      </aside>
+    <DashboardLayout
+      title="Planner Dashboard"
+      onLogout={handleLogout}
+      layout="sidebar"
+      sidebar={sidebar}
+    >
+      {/* Section Header */}
+      <div className="section-header">
+        <div className="section-title-group">
+          <span className="section-icon">{currentTab?.icon}</span>
+          <div>
+            <h2 className="section-title">{currentTab?.label}</h2>
+            <p className="section-description">{currentTab?.description}</p>
+          </div>
+        </div>
+      </div>
 
-      <main className="content">
-        <header className="planner-header">
-          <h1>GridInsight | Planner Dashboard</h1>
-          {/* ✅ Wire logout handler */}
-          <button onClick={handleLogout}>Logout</button>
-        </header>
-
+      {/* Content Area */}
+      <div className="planner-content">
         {activeTab === "overview" && <Overview accuracy={accuracy} />}
         {activeTab === "dayAhead" && (
           <DayAheadJobs
@@ -78,7 +103,7 @@ export default function PlannerDashboard() {
             accuracy={accuracy}
           />
         )}
-      </main>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

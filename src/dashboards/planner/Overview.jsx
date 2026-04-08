@@ -37,14 +37,17 @@ export default function Overview() {
 
   useEffect(() => {
     if (!selectedDate || !zoneId) return;
-    setLoading(true);
 
-    Promise.allSettled([
-      axiosInstance.get("/api/v1/forecast/day-ahead", { params: { zoneId, date: selectedDate } }),
-      axiosInstance.get("/api/v1/forecast/month-ahead", { params: { assetType: "SOLAR" } }),
-      axiosInstance.get("/api/v1/capacity-plans"),
-      axiosInstance.get("/api/v1/forecast/accuracy", { params: { zoneId, date: selectedDate } }),
-    ]).then((results) => {
+    const loadOverviewData = async () => {
+      setLoading(true);
+
+      const results = await Promise.allSettled([
+        axiosInstance.get("/api/v1/forecast/day-ahead", { params: { zoneId, date: selectedDate } }),
+        axiosInstance.get("/api/v1/forecast/month-ahead", { params: { assetType: "SOLAR" } }),
+        axiosInstance.get("/api/v1/capacity-plans"),
+        axiosInstance.get("/api/v1/forecast/accuracy", { params: { zoneId, date: selectedDate } }),
+      ]);
+
       const [dayRes, monthRes, capRes, accRes] = results;
 
       if (dayRes.status === "fulfilled") setDayAhead(dayRes.value.data);
@@ -53,7 +56,9 @@ export default function Overview() {
       if (accRes.status === "fulfilled") setAccuracy(accRes.value.data);
 
       setLoading(false);
-    });
+    };
+
+    loadOverviewData();
   }, [selectedDate, zoneId]);
 
   return (

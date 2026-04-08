@@ -1,5 +1,4 @@
 import axios from "axios";
-import { refreshAccessToken } from "./authApi";
 
 /* ===============================
    AXIOS INSTANCE
@@ -69,8 +68,12 @@ axiosInstance.interceptors.response.use(
       const refreshToken = localStorage.getItem("refreshToken");
 
       try {
-        const response = await refreshAccessToken(refreshToken);
-        const newAccessToken = response.accessToken;
+        // ✅ FIXED: Use axios directly to avoid circular dependency
+        const response = await axios.post(
+          "http://localhost:8081/api/v1/auth/refresh",
+          { refreshToken }
+        );
+        const newAccessToken = response.data.accessToken;
 
         localStorage.setItem("accessToken", newAccessToken);
         axiosInstance.defaults.headers.Authorization =
