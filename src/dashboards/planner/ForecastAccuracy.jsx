@@ -56,8 +56,8 @@ export default function ForecastAccuracy({ zoneFilter, setZoneFilter, dateFilter
       <div className="search-bar">
         <input type="text" placeholder="Zone ID" value={zoneFilter} onChange={e => setZoneFilter(e.target.value)} />
         <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} />
-        <button onClick={handleCheckAccuracy}>Check Accuracy</button>
-        {accuracy && <button onClick={handleExportCSV}>Export CSV</button>}
+        <button className="btn-primary" onClick={handleCheckAccuracy}>{loading ? "Checking..." : "Check Accuracy"}</button>
+        {accuracy && <button className="btn-secondary" onClick={handleExportCSV}>Export CSV</button>}
       </div>
 
       {loading && <p>Loading accuracy data...</p>}

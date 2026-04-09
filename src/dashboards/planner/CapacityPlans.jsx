@@ -65,12 +65,22 @@ export default function CapacityPlans() {
       <h2 className="section-title">Capacity Plans</h2>
       <div className="insert-plan">
         <h3>Add New Capacity Plan</h3>
-        <input type="text" placeholder="Zone ID" value={planZone} onChange={e => setPlanZone(e.target.value)} />
-        <input type="text" placeholder="Horizon (e.g. 2026-Q2)" value={planHorizon} onChange={e => setPlanHorizon(e.target.value)} />
-        <input type="number" placeholder="Capacity MW" value={planCapacity} onChange={e => setPlanCapacity(e.target.value)} />
-        <input type="text" placeholder="Version" value={planVersion} onChange={e => setPlanVersion(e.target.value)} />
-        <input type="text" placeholder="Description" value={planDescription} onChange={e => setPlanDescription(e.target.value)} />
-        <button onClick={handleInsertPlan}>Add Plan</button>
+        <div className="form-group">
+          <input type="text" placeholder="Zone ID" value={planZone} onChange={e => setPlanZone(e.target.value)} />
+        </div>
+        <div className="form-group">
+          <input type="text" placeholder="Horizon (e.g. 2026-Q2)" value={planHorizon} onChange={e => setPlanHorizon(e.target.value)} />
+        </div>
+        <div className="form-group">
+          <input type="number" placeholder="Capacity MW" value={planCapacity} onChange={e => setPlanCapacity(e.target.value)} />
+        </div>
+        <div className="form-group">
+          <input type="text" placeholder="Version" value={planVersion} onChange={e => setPlanVersion(e.target.value)} />
+        </div>
+        <div className="form-group">
+          <input type="text" placeholder="Description" value={planDescription} onChange={e => setPlanDescription(e.target.value)} />
+        </div>
+        <button className="btn-primary" onClick={handleInsertPlan}>Add Plan</button>
       </div>
 
       <table className="planner-table">
@@ -91,7 +101,7 @@ export default function CapacityPlans() {
                 <td>{plan.planVersion}</td>
                 <td>{plan.description}</td>
                 <td>
-                  <button onClick={() => handleExportPdf(plan.id)}>Export PDF</button>
+                  <button className="btn-secondary btn-sm" onClick={() => handleExportPdf(plan.id)}>Export PDF</button>
                 </td>
               </tr>
             ))

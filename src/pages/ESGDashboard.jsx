@@ -1,12 +1,17 @@
 import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Header from "../components/Header";
 import { AuthContext } from "../auth/AuthContext";
+import DashboardLayout from "../components/DashboardLayout";
 import axiosInstance from "../api/axiosInstance";
  
 export default function ESGDashboard() {
   const { logout, role } = useContext(AuthContext);
   const navigate = useNavigate();
+ 
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
  
   // Core State
   const [loading, setLoading] = useState(false);
@@ -17,15 +22,48 @@ export default function ESGDashboard() {
   const [carbonData, setCarbonData] = useState([]);
   const [sustainabilityMetrics, setSustainabilityMetrics] = useState(null);
   const [complianceReports, setComplianceReports] = useState([]);
- 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
+
+  // Sidebar configuration
+  const tabs = [
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: "📊",
+      description: "ESG operations overview"
+    },
+    {
+      id: "carbon",
+      label: "Carbon Offsets",
+      icon: "🌱",
+      description: "Track CO2 emissions reduced"
+    },
+    {
+      id: "metrics",
+      label: "Sustainability Scores",
+      icon: "📈",
+      description: "View E, S, and G metrics"
+    },
+    {
+      id: "compliance",
+      label: "Regulatory Compliance",
+      icon: "📋",
+      description: "Manage audits and reports"
+    }
+  ];
+
+  const sidebar = {
+    navItems: tabs.map(tab => ({
+      id: tab.id,
+      label: tab.label,
+      icon: tab.icon,
+      description: tab.description,
+      active: activeView === tab.id.toUpperCase(),
+      onClick: () => setActiveView(tab.id.toUpperCase())
+    }))
   };
- 
+
   // 1. Fetch Carbon Offset Data
   const fetchCarbonData = async () => {
-    setLoading(true);
     setMessage("");
     try {
       const response = await axiosInstance.get("/api/v1/esg/carbon-offset");
@@ -53,7 +91,7 @@ export default function ESGDashboard() {
       setSustainabilityMetrics(response.data);
       setActiveView("METRICS");
     } catch (error) {
-      // Fallback mock data loaded silently
+      console.error("Error fetching ESG metrics:", error);
       setSustainabilityMetrics({
         overallScore: 88.5,
         environmental: 92.0,
@@ -77,7 +115,7 @@ export default function ESGDashboard() {
       setComplianceReports(response.data || []);
       setActiveView("COMPLIANCE");
     } catch (error) {
-      // Fallback mock data loaded silently
+      console.error("Error fetching ESG compliance reports:", error);
       setComplianceReports([
         { id: "REP-001", title: "Annual Sustainability Report 2025", status: "APPROVED", date: "2026-01-15" },
         { id: "REP-002", title: "Q1 Grid Emissions Audit", status: "PENDING_REVIEW", date: "2026-04-01" },
@@ -112,13 +150,31 @@ export default function ESGDashboard() {
   }
  
   return (
-    <div style={pageContainerStyle}>
-      <Header title="GridInsight – ESG Operations Dashboard" onLogout={handleLogout} />
- 
-      <div style={{ padding: "32px", maxWidth: "1200px", margin: "0 auto" }}>
-        <h3 style={{ color: "white", fontSize: "24px", margin: "0 0 8px 0" }}>Welcome, ESG Officer</h3>
-        <p style={{ color: "#9ca3af", margin: "0 0 24px 0" }}>Monitor carbon offsets, sustainability metrics, and regulatory compliance.</p>
- 
+    <DashboardLayout
+      title="ESG Operations Dashboard"
+      onLogout={handleLogout}
+      layout="sidebar"
+      sidebar={sidebar}
+    >
+      {/* Section Header */}
+      <div className="section-header">
+        <div className="section-title-group">
+          <span className="section-icon">
+            {tabs.find(t => t.id === activeView.toLowerCase())?.icon}
+          </span>
+          <div>
+            <h2 className="section-title">
+              {tabs.find(t => t.id === activeView.toLowerCase())?.label}
+            </h2>
+            <p className="section-description">
+              {tabs.find(t => t.id === activeView.toLowerCase())?.description}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Content Area */}
+      <div className="esg-content">
         {message && (
           <div style={message.includes("Error") || message.includes("Failed") ? errorAlertStyle : successAlertStyle}>
             {message}
@@ -227,14 +283,13 @@ export default function ESGDashboard() {
              </table>
            </div>
         )}
- 
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
  
 /* ===================== STYLES ===================== */
-const pageContainerStyle = { minHeight: "100vh", background: "#0f172a", color: "white", fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" };
+
 const gridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "20px" };
 const cardStyle = { padding: "20px", background: "#1e293b", borderRadius: "10px", cursor: "pointer", border: "1px solid rgba(255,255,255,0.05)", transition: "transform 0.2s" };
 const cardTitleStyle = { margin: "0 0 10px 0", color: "#4ade80" };
