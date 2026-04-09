@@ -10,7 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  // 🔹 Forgot password states
+  // Forgot password states
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotMessage, setForgotMessage] = useState("");
@@ -52,6 +52,9 @@ export default function LoginPage() {
         case "ESG":
           navigate("/esg");
           break;
+        case "ASSET_MANAGER":
+          navigate("/asset-manager"); // Fixed path
+          break;                      // Added missing break
         default:
           navigate("/login");
       }
