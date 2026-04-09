@@ -15,10 +15,6 @@ export const AuthProvider = ({ children }) => {
   );
 
   const login = (token, userRole, userRefreshToken) => {
-    console.log("Saving accessToken:", token);
-    console.log("Saving role:", userRole);
-    console.log("Saving refreshToken:", userRefreshToken);
-
     setAccessToken(token);
     setRole(userRole);
     setRefreshToken(userRefreshToken);
