@@ -3,7 +3,7 @@ import LoginPage from "./pages/LoginPage";
 
 // Dashboards
 import AdminDashboard from "./dashboards/admin/AdminDashboard";
-import AnalystDashboard from "./pages/AnalystDashboard";
+import AnalystDashboard from "./pages/GridAnalystDashboard";
 import PlannerDashboard from "./dashboards/planner/PlannerDashboard"; // ✅ keep this one
 import ESGDashboard from "./pages/ESGDashboard";
 import AssetManagerDashboard from "./pages/AssetManagerDashboard";
@@ -32,7 +32,7 @@ function App() {
         <Route
           path="/analyst"
           element={
-            <RoleProtectedRoute allowedRoles={["ANALYST"]}>
+            <RoleProtectedRoute allowedRoles={["ANALYST", "OPERATOR"]}>
               <AnalystDashboard />
             </RoleProtectedRoute>
           }

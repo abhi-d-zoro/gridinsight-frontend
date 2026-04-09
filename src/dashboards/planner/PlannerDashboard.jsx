@@ -23,16 +23,6 @@ export default function PlannerDashboard() {
     navigate("/login");
   };
 
-  // ✅ RBAC guard
-  if (role !== "PLANNER") {
-    return (
-      <div className="access-denied">
-        <h2>Access Denied</h2>
-        <p>You do not have permission to view this page.</p>
-      </div>
-    );
-  }
-
   const tabs = [
     { id: "overview", label: "Overview", icon: "📊", description: "Dashboard overview and key metrics" },
     { id: "dayAhead", label: "Day-Ahead Forecast", icon: "📅", description: "Day-ahead forecasting and planning" },
@@ -52,8 +42,15 @@ export default function PlannerDashboard() {
     }))
   };
 
-  const getActiveTab = () => tabs.find(t => t.id === activeTab);
-  const currentTab = getActiveTab();
+  // RBAC guard - AFTER all hooks
+  if (role !== "PLANNER" && role !== "ADMIN") {
+    return (
+      <div className="access-denied">
+        <h2>Access Denied</h2>
+        <p>You do not have permission to view this page.</p>
+      </div>
+    );
+  }
 
   return (
     <DashboardLayout
@@ -63,17 +60,6 @@ export default function PlannerDashboard() {
       sidebar={sidebar}
     >
       <div className="planner-content">
-        {/* Section Header */}
-        <div className="section-header">
-          <div className="section-title-group">
-            <span className="section-icon">{currentTab?.icon}</span>
-            <div>
-              <h2 className="section-title">{currentTab?.label}</h2>
-              <p className="section-description">{currentTab?.description}</p>
-            </div>
-          </div>
-        </div>
-
         {/* Content Area */}
         <div className="planner-content-area">
           {activeTab === "overview" && <Overview accuracy={accuracy} />}

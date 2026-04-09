@@ -16,16 +16,6 @@ export default function AdminDashboard() {
     navigate("/login");
   };
 
-  // ✅ RBAC guard
-  if (role !== "ADMIN") {
-    return (
-      <div className="access-denied">
-        <h2>Access Denied</h2>
-        <p>You do not have permission to view this page.</p>
-      </div>
-    );
-  }
-
   const tabs = [
     { id: "USERS", label: "Manage Users", icon: "👥", description: "Add, edit, or remove system users" },
     { id: "ZONES", label: "Grid Zones", icon: "⚡", description: "Manage electrical grid zones" },
@@ -34,10 +24,6 @@ export default function AdminDashboard() {
   ];
 
   const sidebar = {
-    // header: {
-    //   icon: "⚙️",
-    //   title: "Admin Panel"
-    // },
     navItems: tabs.map(tab => ({
       id: tab.id,
       label: tab.label,
@@ -48,8 +34,15 @@ export default function AdminDashboard() {
     }))
   };
 
-  const getActiveTab = () => tabs.find(t => t.id === activeTab);
-  const currentTab = getActiveTab();
+  // RBAC guard - AFTER all hooks
+  if (role !== "ADMIN") {
+    return (
+      <div className="access-denied">
+        <h2>Access Denied</h2>
+        <p>You do not have permission to view this page.</p>
+      </div>
+    );
+  }
 
   return (
     <DashboardLayout

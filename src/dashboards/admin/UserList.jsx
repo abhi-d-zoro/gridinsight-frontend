@@ -10,7 +10,9 @@ export default function UsersList() {
   const [hoveredRow, setHoveredRow] = useState(null);
 
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(5);
   const [totalPages, setTotalPages] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   const [editingUser, setEditingUser] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -33,13 +35,14 @@ export default function UsersList() {
       const res = await adminApi.get("/users", {
         params: {
           page,
-          size: 5,
+          size: pageSize,
           search: searchText || undefined,
           role: roleFilter || undefined,
         },
       });
       setUsers(res.data.content);
       setTotalPages(res.data.totalPages);
+      setTotalRecords(res.data.totalElements || 0);
     } catch (err) {
       const errorMsg = err.response?.data?.message || "Failed to fetch users. Please try again.";
       setError(errorMsg);
@@ -47,8 +50,9 @@ export default function UsersList() {
     } finally {
       setLoading(false);
     }
-  }, [page, roleFilter, searchText]);
+  }, [page, pageSize, roleFilter, searchText]);
 
+  // Debounced search effect - resets page when search/filter changes
   useEffect(() => {
     // Clear existing timeout
     if (searchTimeoutRef.current) {
@@ -57,8 +61,7 @@ export default function UsersList() {
 
     // Set new timeout for debounced search
     searchTimeoutRef.current = setTimeout(() => {
-      setPage(0);
-      fetchUsers();
+      setPage(0); // Reset to first page on search/filter change
     }, 500); // 500ms debounce
 
     return () => {
@@ -66,11 +69,12 @@ export default function UsersList() {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [searchText, roleFilter, fetchUsers]);
+  }, [searchText, roleFilter]);
 
+  // Fetch users whenever page, pageSize, searchText, or roleFilter changes
   useEffect(() => {
     fetchUsers();
-  }, [page]);
+  }, [fetchUsers]);
 
   return (
     <>
@@ -140,6 +144,24 @@ export default function UsersList() {
           >
             + Add User
           </button>
+
+          <div className="page-size-selector">
+            <label htmlFor="pageSize">Show:</label>
+            <select
+              id="pageSize"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPage(0);
+              }}
+              disabled={loading}
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
         </div>
 
         {/* ✅ LOADING STATE */}
@@ -152,6 +174,7 @@ export default function UsersList() {
 
         {/* ✅ USERS TABLE */}
         {!loading && (
+        <div className="table-scroll-container">
         <table className="users-table">
           <thead>
             <tr className="userlist-col">
@@ -176,48 +199,49 @@ export default function UsersList() {
               </tr>
             ) : (
               users.map((u) => (
-              <tr key={u.id}>
-                <td colSpan={5}>
-                  <div
-                    className={`user-row ${
-                      hoveredRow === u.id ? "hovered" : ""
+              <tr
+                key={u.id}
+                className={`user-row ${hoveredRow === u.id ? "hovered" : ""}`}
+                onMouseEnter={() => setHoveredRow(u.id)}
+                onMouseLeave={() => setHoveredRow(null)}
+              >
+                <td>
+                  <div className="name-cell">
+                    <div className="avatar">
+                      {u.name?.charAt(0).toUpperCase()}
+                    </div>
+                    {u.name}
+                  </div>
+                </td>
+
+                <td className="email">{u.email}</td>
+                <td><span className="role-badge">{u.role}</span></td>
+
+                <td>
+                  <span
+                    className={`status-badge ${
+                      u.status === "ACTIVE" ? "active" : "inactive"
                     }`}
-                    onMouseEnter={() => setHoveredRow(u.id)}
-                    onMouseLeave={() => setHoveredRow(null)}
                   >
-                    <div className="name-cell">
-                      <div className="avatar">
-                        {u.name?.charAt(0).toUpperCase()}
-                      </div>
-                      {u.name}
-                    </div>
+                    ● {u.status}
+                  </span>
+                </td>
 
-                    <div className="email">{u.email}</div>
-                    <span className="role-badge">{u.role}</span>
-
-                    <span
-                      className={`status-badge ${
-                        u.status === "ACTIVE" ? "active" : "inactive"
-                      }`}
+                <td>
+                  <div className="row-actions">
+                    <button
+                      className="action-btn user-edit-btn"
+                      onClick={() => setEditingUser(u)}
                     >
-                      ● {u.status}
-                    </span>
+                      Edit
+                    </button>
 
-                    <div className="row-actions">
-                      <button
-                        className="action-btn user-edit-btn"
-                        onClick={() => setEditingUser(u)}
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        className="action-btn user-delete-btn"
-                        onClick={() => setDeletingUser(u)}
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    <button
+                      className="action-btn user-delete-btn"
+                      onClick={() => setDeletingUser(u)}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -225,23 +249,34 @@ export default function UsersList() {
             )}
           </tbody>
         </table>
+        </div>
         )}
 
         {/* ✅ PAGINATION */}
-        {!loading && (
-        <div className="pagination">
-          <button disabled={page === 0} onClick={() => setPage(page - 1)}>
-            Previous
-          </button>
-          <span>
-            Page {page + 1} of {totalPages}
-          </span>
-          <button
-            disabled={page + 1 >= totalPages}
-            onClick={() => setPage(page + 1)}
-          >
-            Next
-          </button>
+        {!loading && totalPages > 0 && (
+        <div className="pagination-container">
+          <div className="pagination-info">
+            <span className="record-count">Total: {totalRecords} records</span>
+            <span className="page-info">Page {page + 1} of {totalPages}</span>
+          </div>
+          <div className="pagination-controls">
+            <button
+              className="pagination-btn"
+              disabled={page === 0}
+              onClick={() => setPage(page - 1)}
+              aria-label="Previous page"
+            >
+              ← Previous
+            </button>
+            <button
+              className="pagination-btn"
+              disabled={page + 1 >= totalPages}
+              onClick={() => setPage(page + 1)}
+              aria-label="Next page"
+            >
+              Next →
+            </button>
+          </div>
         </div>
         )}
       </div>

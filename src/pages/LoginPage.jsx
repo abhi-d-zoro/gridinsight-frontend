@@ -181,7 +181,7 @@ export default function LoginPage() {
     }
 
     if (!validators.password(state.password)) {
-      dispatch({ type: "SET_ERROR", payload: "Password must be at least 6 characters" });
+      dispatch({ type: "SET_ERROR", payload: "Password must be at least 8 characters with uppercase, lowercase, number, and special character" });
       return;
     }
 
@@ -211,6 +211,7 @@ export default function LoginPage() {
       const roleRoutes = {
         "ADMIN": "/admin",
         "ANALYST": "/analyst",
+        "OPERATOR": "/analyst",
         "PLANNER": "/planner",
         "ESG": "/esg",
         "ASSET_MANAGER": "/asset-manager",
