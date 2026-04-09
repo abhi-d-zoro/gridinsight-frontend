@@ -57,43 +57,48 @@ export default function DayAheadJobs({ zoneFilter, setZoneFilter, dateFilter, se
       <div className="search-bar">
         <input type="text" placeholder="Zone ID" value={zoneFilter} onChange={e => setZoneFilter(e.target.value)} />
         <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} />
-        <button onClick={handleSearch}>Search</button>
-        <button onClick={() => {
+        <button className="btn-primary" onClick={handleSearch}>Search</button>
+        <button className="btn-secondary" onClick={() => {
           setZoneFilter(""); setDateFilter("");
           axiosInstance.get("/api/v1/forecast/jobs").then(res => setJobs(res.data));
         }}>Reset</button>
       </div>
       <div className="insert-job">
         <h3>Run New Forecast</h3>
-        <button onClick={handleInsert}>Run Forecast</button>
+        <button className="btn-success" onClick={handleInsert}>Run Forecast</button>
       </div>
 
       {/* NEW: Update Status Button */}
       <div className="sidebar-action">
-        <button onClick={() => setShowModal(true)}>Update Status</button>
+        <button className="btn-warning" onClick={() => setShowModal(true)}>Update Status</button>
       </div>
 
       {/* Modal */}
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h3>Update Job Status</h3>
-            <label>
-              Job ID:
-              <input type="text" value={jobIdInput} onChange={e => setJobIdInput(e.target.value)} />
-            </label>
-            <label>
-              New Status:
-              <select value={statusInput} onChange={e => setStatusInput(e.target.value)}>
-                <option value="">Select...</option>
-                <option value="PENDING">PENDING</option>
-                <option value="COMPLETED">COMPLETED</option>
-                <option value="FAILED">FAILED</option>
-              </select>
-            </label>
-            <div className="modal-actions">
-              <button onClick={updateStatus}>Submit</button>
-              <button onClick={() => setShowModal(false)}>Cancel</button>
+            <div className="modal-header">
+              <h3>Update Job Status</h3>
+              <button className="modal-close-btn" onClick={() => setShowModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Job ID:</label>
+                <input type="text" value={jobIdInput} onChange={e => setJobIdInput(e.target.value)} placeholder="Enter Job ID" />
+              </div>
+              <div className="form-group">
+                <label>New Status:</label>
+                <select value={statusInput} onChange={e => setStatusInput(e.target.value)}>
+                  <option value="">Select...</option>
+                  <option value="PENDING">PENDING</option>
+                  <option value="COMPLETED">COMPLETED</option>
+                  <option value="FAILED">FAILED</option>
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="btn-primary" onClick={updateStatus}>Submit</button>
             </div>
           </div>
         </div>

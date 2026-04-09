@@ -1,5 +1,5 @@
 import { useReducer, useContext, useEffect, useRef, useCallback } from "react";
-import { login as loginApi, requestPasswordReset, verifyPasswordResetOtp, resetPassword } from "../api/authApi";
+import { login as loginApi, requestPasswordReset, resetPassword } from "../api/authApi";
 import { AuthContext } from "../auth/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
@@ -11,8 +11,10 @@ const validators = {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regex.test(email);
   },
+  // Backend password policy: 8+ chars, upper, lower, digit, special char
   password: (password) => {
-    return password && password.length >= 6;
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+    return regex.test(password);
   },
 };
 
@@ -36,6 +38,8 @@ const initialFormState = {
   forgotOtp: "",
   forgotNewPassword: "",
   forgotConfirmPassword: "",
+  showForgotNewPassword: false,
+  showForgotConfirmPassword: false,
   forgotMessage: "",
   forgotLoading: false,
   forgotError: "",
@@ -66,7 +70,7 @@ function formReducer(state, action) {
     
     // Forgot password
     case "OPEN_FORGOT_MODAL":
-      return { ...state, showForgotModal: true, forgotStep: "email", forgotMessage: "", forgotError: "", forgotEmail: "", forgotOtp: "", forgotNewPassword: "", forgotConfirmPassword: "" };
+      return { ...state, showForgotModal: true, forgotStep: "email", forgotMessage: "", forgotError: "", forgotOtp: "", forgotNewPassword: "", forgotConfirmPassword: "" };
     case "CLOSE_FORGOT_MODAL":
       return { ...state, showForgotModal: false, forgotMessage: "", forgotError: "", forgotEmail: "", forgotOtp: "", forgotNewPassword: "", forgotConfirmPassword: "", forgotStep: "email" };
     case "SET_FORGOT_EMAIL":
@@ -85,6 +89,10 @@ function formReducer(state, action) {
       return { ...state, forgotLoading: action.payload };
     case "SET_FORGOT_STEP":
       return { ...state, forgotStep: action.payload, forgotError: "" };
+    case "TOGGLE_SHOW_FORGOT_NEW_PASSWORD":
+      return { ...state, showForgotNewPassword: !state.showForgotNewPassword };
+    case "TOGGLE_SHOW_FORGOT_CONFIRM_PASSWORD":
+      return { ...state, showForgotConfirmPassword: !state.showForgotConfirmPassword };
     
     // Rate limiting
     case "INCREMENT_LOGIN_ATTEMPTS":
@@ -241,6 +249,7 @@ export default function LoginPage() {
   }, [state.email, state.password, state.rememberMe, state.isLocked, state.loginAttempts, login, navigate]);
 
   // Handle forgot password - step 1: request OTP
+  // Backend sends OTP via email and always returns success (no token/OTP in response)
   const handleRequestPasswordReset = useCallback(async () => {
     dispatch({ type: "SET_FORGOT_ERROR", payload: "" });
 
@@ -256,6 +265,7 @@ export default function LoginPage() {
 
     try {
       dispatch({ type: "SET_FORGOT_LOADING", payload: true });
+      // Backend generates and sends OTP via email, returns generic message
       await requestPasswordReset(state.forgotEmail);
       dispatch({ type: "SET_FORGOT_MESSAGE", payload: "OTP sent to your email. Check your inbox (including spam folder)." });
       dispatch({ type: "SET_FORGOT_STEP", payload: "otp" });
@@ -267,8 +277,9 @@ export default function LoginPage() {
     }
   }, [state.forgotEmail]);
 
-  // Handle forgot password - step 2: verify OTP
-  const handleVerifyOtp = useCallback(async () => {
+  // Handle forgot password - step 2: validate OTP locally (no API call)
+  // OTP is verified server-side when submitted with password reset
+  const handleVerifyOtp = useCallback(() => {
     dispatch({ type: "SET_FORGOT_ERROR", payload: "" });
 
     if (!state.forgotOtp.trim()) {
@@ -281,20 +292,18 @@ export default function LoginPage() {
       return;
     }
 
-    try {
-      dispatch({ type: "SET_FORGOT_LOADING", payload: true });
-      await verifyPasswordResetOtp(state.forgotEmail, state.forgotOtp);
-      dispatch({ type: "SET_FORGOT_MESSAGE", payload: "OTP verified! Please enter your new password." });
-      dispatch({ type: "SET_FORGOT_STEP", payload: "newPassword" });
-    } catch (err) {
-      const errorMsg = err.response?.data?.message || "Invalid OTP. Please try again.";
-      dispatch({ type: "SET_FORGOT_ERROR", payload: errorMsg });
-    } finally {
-      dispatch({ type: "SET_FORGOT_LOADING", payload: false });
+    if (!/^\d{6}$/.test(state.forgotOtp)) {
+      dispatch({ type: "SET_FORGOT_ERROR", payload: "OTP must contain only digits" });
+      return;
     }
-  }, [state.forgotEmail, state.forgotOtp]);
+
+    // OTP is valid format - proceed to password entry step (no API call needed)
+    dispatch({ type: "SET_FORGOT_MESSAGE", payload: "Please enter your new password." });
+    dispatch({ type: "SET_FORGOT_STEP", payload: "newPassword" });
+  }, [state.forgotOtp]);
 
   // Handle forgot password - step 3: reset password
+  // Single API call with email, OTP, and new password
   const handleResetPassword = useCallback(async () => {
     dispatch({ type: "SET_FORGOT_ERROR", payload: "" });
 
@@ -304,7 +313,7 @@ export default function LoginPage() {
     }
 
     if (!validators.password(state.forgotNewPassword)) {
-      dispatch({ type: "SET_FORGOT_ERROR", payload: "Password must be at least 6 characters" });
+      dispatch({ type: "SET_FORGOT_ERROR", payload: "Password must be at least 8 characters with uppercase, lowercase, number, and special character" });
       return;
     }
 
@@ -315,6 +324,8 @@ export default function LoginPage() {
 
     try {
       dispatch({ type: "SET_FORGOT_LOADING", payload: true });
+      // Submit email + OTP + new password together
+      // Backend verifies OTP and resets password
       await resetPassword(state.forgotEmail, state.forgotOtp, state.forgotNewPassword);
       dispatch({ type: "SET_FORGOT_MESSAGE", payload: "Password reset successfully! You can now login with your new password." });
       setTimeout(() => {
@@ -416,7 +427,17 @@ export default function LoginPage() {
             <button
               type="button"
               className="forgot-link"
-              onClick={() => dispatch({ type: "OPEN_FORGOT_MODAL" })}
+              onClick={() => {
+                // Check if email exists in login form
+                if (!state.email.trim()) {
+                  dispatch({ type: "SET_FORGOT_ERROR", payload: "Please fill in your email to reset password" });
+                  dispatch({ type: "OPEN_FORGOT_MODAL" });
+                } else {
+                  // Pre-fill forgot email from login form
+                  dispatch({ type: "SET_FORGOT_EMAIL", payload: state.email });
+                  dispatch({ type: "OPEN_FORGOT_MODAL" });
+                }
+              }}
               disabled={state.isLoading}
             >
               Forgot Password?
@@ -483,10 +504,9 @@ export default function LoginPage() {
               </div>
             )}
 
-            {!state.forgotMessage && (
-              <div className="modal-body">
-                {/* STEP 1: Email */}
-                {state.forgotStep === "email" && (
+            <div className="modal-body">
+                {/* STEP 1: Email (only show input if not pre-filled from login form) */}
+                {state.forgotStep === "email" && !state.forgotEmail && (
                   <>
                     <p className="modal-text">
                       Enter your email address and we'll send you a verification code.
@@ -515,6 +535,34 @@ export default function LoginPage() {
                       onClick={handleRequestPasswordReset}
                     >
                       {state.forgotLoading ? "Sending..." : "Send Code"}
+                    </button>
+                  </>
+                )}
+
+                {/* STEP 1B: Auto-proceed if email was pre-filled from login */}
+                {state.forgotStep === "email" && state.forgotEmail && !state.forgotOtp && (
+                  <>
+                    <p className="modal-text">
+                      We'll send a verification code to <strong>{state.forgotEmail}</strong>
+                    </p>
+                    <button
+                      type="button"
+                      className="modal-button primary"
+                      disabled={state.forgotLoading}
+                      onClick={handleRequestPasswordReset}
+                    >
+                      {state.forgotLoading ? "Sending..." : "Send Code"}
+                    </button>
+                    <button
+                      type="button"
+                      className="modal-button secondary"
+                      disabled={state.forgotLoading}
+                      onClick={() => {
+                        dispatch({ type: "SET_FORGOT_EMAIL", payload: "" });
+                        dispatch({ type: "SET_FORGOT_ERROR", payload: "" });
+                      }}
+                    >
+                      Change Email
                     </button>
                   </>
                 )}
@@ -578,34 +626,58 @@ export default function LoginPage() {
                         New Password
                         <span className="required">*</span>
                       </label>
-                      <input
-                        id="forgot-new-password"
-                        type="password"
-                        value={state.forgotNewPassword}
-                        onChange={(e) => dispatch({ type: "SET_FORGOT_NEW_PASSWORD", payload: e.target.value })}
-                        className="form-input"
-                        placeholder="Enter new password"
-                        required
-                        disabled={state.forgotLoading}
-                        autoComplete="new-password"
-                      />
+                      <div className="password-input-wrapper">
+                        <input
+                          id="forgot-new-password"
+                          type={state.showForgotNewPassword ? "text" : "password"}
+                          value={state.forgotNewPassword}
+                          onChange={(e) => dispatch({ type: "SET_FORGOT_NEW_PASSWORD", payload: e.target.value })}
+                          className="form-input"
+                          placeholder="Enter new password"
+                          required
+                          disabled={state.forgotLoading}
+                          autoComplete="new-password"
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle"
+                          onClick={() => dispatch({ type: "TOGGLE_SHOW_FORGOT_NEW_PASSWORD" })}
+                          title={state.showForgotNewPassword ? "Hide password" : "Show password"}
+                          disabled={state.forgotLoading}
+                          aria-label={state.showForgotNewPassword ? "Hide password" : "Show password"}
+                        >
+                          {state.showForgotNewPassword ? "👁️" : "👁️‍🗨️"}
+                        </button>
+                      </div>
                     </div>
                     <div className="form-group">
                       <label className="form-label" htmlFor="forgot-confirm-password">
                         Confirm Password
                         <span className="required">*</span>
                       </label>
-                      <input
-                        id="forgot-confirm-password"
-                        type="password"
-                        value={state.forgotConfirmPassword}
-                        onChange={(e) => dispatch({ type: "SET_FORGOT_CONFIRM_PASSWORD", payload: e.target.value })}
-                        className="form-input"
-                        placeholder="Confirm new password"
-                        required
-                        disabled={state.forgotLoading}
-                        autoComplete="new-password"
-                      />
+                      <div className="password-input-wrapper">
+                        <input
+                          id="forgot-confirm-password"
+                          type={state.showForgotConfirmPassword ? "text" : "password"}
+                          value={state.forgotConfirmPassword}
+                          onChange={(e) => dispatch({ type: "SET_FORGOT_CONFIRM_PASSWORD", payload: e.target.value })}
+                          className="form-input"
+                          placeholder="Confirm new password"
+                          required
+                          disabled={state.forgotLoading}
+                          autoComplete="new-password"
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle"
+                          onClick={() => dispatch({ type: "TOGGLE_SHOW_FORGOT_CONFIRM_PASSWORD" })}
+                          title={state.showForgotConfirmPassword ? "Hide password" : "Show password"}
+                          disabled={state.forgotLoading}
+                          aria-label={state.showForgotConfirmPassword ? "Hide password" : "Show password"}
+                        >
+                          {state.showForgotConfirmPassword ? "👁️" : "👁️‍🗨️"}
+                        </button>
+                      </div>
                     </div>
                     <div className="modal-buttons">
                       <button
@@ -627,8 +699,7 @@ export default function LoginPage() {
                     </div>
                   </>
                 )}
-              </div>
-            )}
+            </div>
           </div>
         </div>
       )}

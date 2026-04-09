@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../auth/AuthContext";
 import DashboardLayout from "../../components/DashboardLayout";
@@ -12,7 +12,6 @@ import "./PlannerDashboard.css";
 export default function PlannerDashboard() {
   const { logout, role } = useContext(AuthContext);
   const navigate = useNavigate();
-
   const [activeTab, setActiveTab] = useState("overview");
   const [zoneFilter, setZoneFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
@@ -43,10 +42,6 @@ export default function PlannerDashboard() {
   ];
 
   const sidebar = {
-    header: {
-      icon: "📋",
-      title: "Planner Panel"
-    },
     navItems: tabs.map(tab => ({
       id: tab.id,
       label: tab.label,
@@ -67,42 +62,44 @@ export default function PlannerDashboard() {
       layout="sidebar"
       sidebar={sidebar}
     >
-      {/* Section Header */}
-      <div className="section-header">
-        <div className="section-title-group">
-          <span className="section-icon">{currentTab?.icon}</span>
-          <div>
-            <h2 className="section-title">{currentTab?.label}</h2>
-            <p className="section-description">{currentTab?.description}</p>
+      <div className="planner-content">
+        {/* Section Header */}
+        <div className="section-header">
+          <div className="section-title-group">
+            <span className="section-icon">{currentTab?.icon}</span>
+            <div>
+              <h2 className="section-title">{currentTab?.label}</h2>
+              <p className="section-description">{currentTab?.description}</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Content Area */}
-      <div className="planner-content">
-        {activeTab === "overview" && <Overview accuracy={accuracy} />}
-        {activeTab === "dayAhead" && (
-          <DayAheadJobs
-            zoneFilter={zoneFilter}
-            setZoneFilter={setZoneFilter}
-            dateFilter={dateFilter}
-            setDateFilter={setDateFilter}
-          />
-        )}
-        {activeTab === "monthAhead" && (
-          <MonthAheadForecast assetType={assetType} setAssetType={setAssetType} />
-        )}
-        {activeTab === "capacity" && <CapacityPlans />}
-        {activeTab === "accuracy" && (
-          <ForecastAccuracy
-            zoneFilter={zoneFilter}
-            setZoneFilter={setZoneFilter}
-            dateFilter={dateFilter}
-            setDateFilter={setDateFilter}
-            setAccuracy={setAccuracy}
-            accuracy={accuracy}
-          />
-        )}
+        {/* Content Area */}
+        <div className="planner-content-area">
+          {activeTab === "overview" && <Overview accuracy={accuracy} />}
+          {activeTab === "dayAhead" && (
+            <DayAheadJobs
+              zoneFilter={zoneFilter}
+              setZoneFilter={setZoneFilter}
+              dateFilter={dateFilter}
+              setDateFilter={setDateFilter}
+            />
+          )}
+          {activeTab === "monthAhead" && (
+            <MonthAheadForecast assetType={assetType} setAssetType={setAssetType} />
+          )}
+          {activeTab === "capacity" && <CapacityPlans />}
+          {activeTab === "accuracy" && (
+            <ForecastAccuracy
+              zoneFilter={zoneFilter}
+              setZoneFilter={setZoneFilter}
+              dateFilter={dateFilter}
+              setDateFilter={setDateFilter}
+              setAccuracy={setAccuracy}
+              accuracy={accuracy}
+            />
+          )}
+        </div>
       </div>
     </DashboardLayout>
   );
