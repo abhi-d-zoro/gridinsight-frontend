@@ -255,6 +255,31 @@ body {
   color: #9ca3af;
 }
 
+/* Error state for inputs */
+.form-input.input-error {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.form-input.input-error:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
+}
+
+.password-input-wrapper.has-error {
+  border-color: #ef4444;
+}
+
+.login-card.dark .form-input.input-error {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.login-card.dark .form-input.input-error:focus {
+  border-color: #f87171;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
