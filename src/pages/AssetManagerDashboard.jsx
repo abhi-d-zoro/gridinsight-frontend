@@ -91,6 +91,24 @@ export default function AssetManagerDashboard() {
     }
   };
 
+  //patil
+  // 2.5 Resolve Maintenance
+  const handleResolveMaintenance = async (id) => {
+    setLoading(true);
+    setMessage("");
+    try {
+      await axiosInstance.put(`/api/v1/assets/${id}/resolve`);
+      setMessage(`Asset ${id} maintenance resolved. System is Operational!`);
+      setAssetsLoaded(false); // Trigger re-fetch so it vanishes from the warning list instantly
+    } catch (error) {
+      console.error("Resolve Error:", error);
+      setMessage("Failed to resolve maintenance.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  //patil
+
   // 3. Fetch Generation Trends (Handles dd-mm-yyyy conversion)
   const fetchTrends = async (e) => {
     e.preventDefault();
@@ -347,20 +365,27 @@ export default function AssetManagerDashboard() {
                             </span>
                           </td>
                           <td>
+                            {/* patil */}
                             {asset.status === "UNDER_MAINTENANCE" ? (
-                              <span className="repair-monitoring">⏳ Monitor Repair Progress</span>
+                              <button
+                                className="btn btn-sm btn-success"
+                                style={{ background: "#10b981", color: "white", borderColor: "#10b981", fontWeight: "bold" }}
+                                onClick={() => handleResolveMaintenance(asset.id)}
+                              >
+                                ✔ Mark Resolved
+                              </button>
                             ) : (
                               <button
                                 className="btn btn-sm btn-danger"
                                 onClick={() => {
                                   setActiveTab("MAINTENANCE");
                                   setSelectedAssetId(asset.id);
-                                  fetchAssets("MAINTENANCE");
                                 }}
                               >
                                 Schedule Repair
                               </button>
                             )}
+                            {/* patil */}
                           </td>
                         </tr>
                       ))}
