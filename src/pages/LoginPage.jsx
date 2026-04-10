@@ -1,110 +1,729 @@
-import { useState, useContext } from "react";
-import { login as loginApi } from "../api/authApi";
+import { useReducer, useContext, useEffect, useRef, useCallback } from "react";
+import { login as loginApi, requestPasswordReset, resetPassword } from "../api/authApi";
 import { AuthContext } from "../auth/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import "../styles/login.css";
+
+// Validation utilities
+const validators = {
+  email: (email) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+  },
+  // Backend password policy: 8+ chars, upper, lower, digit, special char
+  password: (password) => {
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+    return regex.test(password);
+  },
+};
+
+// Form state reducer
+const initialFormState = {
+  // Login form
+  email: "",
+  password: "",
+  rememberMe: false,
+  showPassword: false,
+  
+  // UI state
+  error: "",
+  errorField: "", // 'email', 'password', or '' for general errors
+  isLoading: false,
+  theme: "dark",
+  
+  // Forgot password modal
+  showForgotModal: false,
+  forgotStep: "email", // email, otp, newPassword
+  forgotEmail: "",
+  forgotOtp: "",
+  forgotNewPassword: "",
+  forgotConfirmPassword: "",
+  showForgotNewPassword: false,
+  showForgotConfirmPassword: false,
+  forgotMessage: "",
+  forgotLoading: false,
+  forgotError: "",
+  
+  // Rate limiting
+  loginAttempts: 0,
+  lastAttemptTime: 0,
+  isLocked: false,
+};
+
+function formReducer(state, action) {
+  switch (action.type) {
+    // Login form
+    case "SET_EMAIL":
+      return { ...state, email: action.payload };
+    case "SET_PASSWORD":
+      return { ...state, password: action.payload };
+    case "SET_REMEMBER_ME":
+      return { ...state, rememberMe: action.payload };
+    case "TOGGLE_SHOW_PASSWORD":
+      return { ...state, showPassword: !state.showPassword };
+    case "SET_ERROR":
+      return { ...state, error: action.payload, errorField: action.field || "" };
+    case "SET_IS_LOADING":
+      return { ...state, isLoading: action.payload };
+    case "SET_THEME":
+      return { ...state, theme: action.payload };
+    
+    // Forgot password
+    case "OPEN_FORGOT_MODAL":
+      return { ...state, showForgotModal: true, forgotStep: "email", forgotMessage: "", forgotError: "", forgotOtp: "", forgotNewPassword: "", forgotConfirmPassword: "" };
+    case "CLOSE_FORGOT_MODAL":
+      return { ...state, showForgotModal: false, forgotMessage: "", forgotError: "", forgotEmail: "", forgotOtp: "", forgotNewPassword: "", forgotConfirmPassword: "", forgotStep: "email" };
+    case "SET_FORGOT_EMAIL":
+      return { ...state, forgotEmail: action.payload };
+    case "SET_FORGOT_OTP":
+      return { ...state, forgotOtp: action.payload };
+    case "SET_FORGOT_NEW_PASSWORD":
+      return { ...state, forgotNewPassword: action.payload };
+    case "SET_FORGOT_CONFIRM_PASSWORD":
+      return { ...state, forgotConfirmPassword: action.payload };
+    case "SET_FORGOT_MESSAGE":
+      return { ...state, forgotMessage: action.payload };
+    case "SET_FORGOT_ERROR":
+      return { ...state, forgotError: action.payload };
+    case "SET_FORGOT_LOADING":
+      return { ...state, forgotLoading: action.payload };
+    case "SET_FORGOT_STEP":
+      return { ...state, forgotStep: action.payload, forgotError: "" };
+    case "TOGGLE_SHOW_FORGOT_NEW_PASSWORD":
+      return { ...state, showForgotNewPassword: !state.showForgotNewPassword };
+    case "TOGGLE_SHOW_FORGOT_CONFIRM_PASSWORD":
+      return { ...state, showForgotConfirmPassword: !state.showForgotConfirmPassword };
+    
+    // Rate limiting
+    case "INCREMENT_LOGIN_ATTEMPTS":
+      return { 
+        ...state, 
+        loginAttempts: state.loginAttempts + 1,
+        lastAttemptTime: Date.now(),
+        isLocked: state.loginAttempts + 1 >= 5
+      };
+    case "RESET_LOGIN_ATTEMPTS":
+      return { ...state, loginAttempts: 0, isLocked: false };
+    
+    default:
+      return state;
+  }
+}
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
+  const [state, dispatch] = useReducer(formReducer, initialFormState);
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+  const lockoutTimerRef = useRef(null);
+  const rememberEmailRef = useRef(null);
 
-  const handleLogin = async (e) => {
+  // Initialize theme and remember me
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("loginTheme");
+    if (savedTheme === "light" || savedTheme === "dark") {
+      dispatch({ type: "SET_THEME", payload: savedTheme });
+    }
+
+    // Prefill email if remember me was enabled
+    const savedEmail = localStorage.getItem("rememberEmail");
+    if (savedEmail) {
+      dispatch({ type: "SET_EMAIL", payload: savedEmail });
+      dispatch({ type: "SET_REMEMBER_ME", payload: true });
+    }
+  }, []);
+
+  // Save theme to localStorage
+  useEffect(() => {
+    localStorage.setItem("loginTheme", state.theme);
+  }, [state.theme]);
+
+  // Cleanup rate limiting timer on unmount
+  useEffect(() => {
+    return () => {
+      if (lockoutTimerRef.current) {
+        clearTimeout(lockoutTimerRef.current);
+      }
+    };
+  }, []);
+
+  const toggleTheme = () => {
+    dispatch({ 
+      type: "SET_THEME", 
+      payload: state.theme === "dark" ? "light" : "dark" 
+    });
+  };
+
+  // Handle login with validation
+  const handleLogin = useCallback(async (e) => {
     e.preventDefault();
+    dispatch({ type: "SET_ERROR", payload: "" });
 
-    if (!email.trim() || !password.trim()) {
-      setError("Email and password are required");
+    // Check lockout
+    if (state.isLocked) {
+      dispatch({ type: "SET_ERROR", payload: "Too many failed attempts. Please try again in 15 minutes." });
+      return;
+    }
+
+    // Validation
+    if (!state.email.trim()) {
+      dispatch({ type: "SET_ERROR", payload: "Email is required" });
+      return;
+    }
+
+    if (!validators.email(state.email)) {
+      dispatch({ type: "SET_ERROR", payload: "Please enter a valid email address" });
+      return;
+    }
+
+    if (!state.password.trim()) {
+      dispatch({ type: "SET_ERROR", payload: "Password is required" });
+      return;
+    }
+
+    // Note: Don't validate password complexity on login - just send to server
+    // The server will respond with "invalid credentials" if wrong
+
+    try {
+      dispatch({ type: "SET_IS_LOADING", payload: true });
+
+      const response = await loginApi(state.email, state.password);
+      const token = response.accessToken;
+      const decoded = jwtDecode(token);
+
+      const role = decoded.roles?.[0]?.replace("ROLE_", "");
+      if (!role) throw new Error("Role information missing from token");
+
+      // Save email if remember me is checked
+      if (state.rememberMe) {
+        localStorage.setItem("rememberEmail", state.email);
+      } else {
+        localStorage.removeItem("rememberEmail");
+      }
+
+      // Note: In production, these should be httpOnly cookies
+      // For now, using localStorage with a security warning
+      login(token, role, response.refreshToken);
+      dispatch({ type: "RESET_LOGIN_ATTEMPTS" });
+
+      // Navigate based on role
+      const roleRoutes = {
+        "ADMIN": "/admin",
+        "ANALYST": "/analyst",
+        "OPERATOR": "/analyst",
+        "PLANNER": "/planner",
+        "ESG": "/esg",
+        "ASSET_MANAGER": "/asset-manager",
+      };
+
+      navigate(roleRoutes[role] || "/login");
+    } catch (err) {
+      dispatch({ type: "INCREMENT_LOGIN_ATTEMPTS" });
+
+      // Specific error messages with field detection
+      let errorMsg = "Login failed. Please try again.";
+      let errorField = "";
+      
+      // Get all possible error info from response
+      const status = err.response?.status;
+      const backendMsg = (err.response?.data?.message || err.response?.data?.error || "").toLowerCase();
+      const errorCode = err.response?.data?.code || "";
+      
+      // Log for debugging - remove in production
+      console.log("Login error:", { status, backendMsg, errorCode, fullData: err.response?.data });
+      
+      if (status === 401 || status === 400) {
+        // Check for email/user not found errors
+        if (
+          backendMsg.includes("user not found") || 
+          backendMsg.includes("no user") || 
+          backendMsg.includes("email not found") || 
+          backendMsg.includes("user does not exist") ||
+          backendMsg.includes("account not found") ||
+          backendMsg.includes("email does not exist") ||
+          backendMsg.includes("user with email") ||
+          backendMsg.includes("no account") ||
+          errorCode === "USER_NOT_FOUND" ||
+          errorCode === "EMAIL_NOT_FOUND"
+        ) {
+          errorMsg = "Email not found. Please check your email address.";
+          errorField = "email";
+        } 
+        // Check for password errors
+        else if (
+          backendMsg.includes("wrong password") || 
+          backendMsg.includes("incorrect password") || 
+          backendMsg.includes("password is incorrect") ||
+          backendMsg.includes("invalid password") ||
+          backendMsg.includes("password mismatch") ||
+          backendMsg.includes("password does not match") ||
+          errorCode === "WRONG_PASSWORD" ||
+          errorCode === "INVALID_PASSWORD"
+        ) {
+          errorMsg = "Incorrect password. Please try again.";
+          errorField = "password";
+        } 
+        // Generic bad credentials - default to both
+        else {
+          errorMsg = "Invalid email or password";
+          errorField = "both";
+        }
+      } else if (status === 404) {
+        errorMsg = "Email not found. Please check your email address.";
+        errorField = "email";
+      } else if (status === 429) {
+        errorMsg = "Too many login attempts. Please try again later.";
+        errorField = "";
+        dispatch({ type: "SET_IS_LOADING", payload: false });
+        return;
+      } else if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
+        errorField = "both";
+      } else if (err.message === "Network Error") {
+        errorMsg = "Network error. Please check your connection and try again.";
+        errorField = "";
+      }
+
+      dispatch({ type: "SET_ERROR", payload: errorMsg, field: errorField });
+
+      // Set lockout timer if rate limited
+      if (state.loginAttempts + 1 >= 5) {
+        lockoutTimerRef.current = setTimeout(() => {
+          dispatch({ type: "RESET_LOGIN_ATTEMPTS" });
+        }, 15 * 60 * 1000); // 15 minutes
+      }
+    } finally {
+      dispatch({ type: "SET_IS_LOADING", payload: false });
+    }
+  }, [state.email, state.password, state.rememberMe, state.isLocked, state.loginAttempts, login, navigate]);
+
+  // Handle forgot password - step 1: request OTP
+  // Backend sends OTP via email and always returns success (no token/OTP in response)
+  const handleRequestPasswordReset = useCallback(async () => {
+    dispatch({ type: "SET_FORGOT_ERROR", payload: "" });
+
+    if (!state.forgotEmail.trim()) {
+      dispatch({ type: "SET_FORGOT_ERROR", payload: "Email is required" });
+      return;
+    }
+
+    if (!validators.email(state.forgotEmail)) {
+      dispatch({ type: "SET_FORGOT_ERROR", payload: "Please enter a valid email address" });
       return;
     }
 
     try {
-      setError("");
-
-      // ✅ Backend login
-      const response = await loginApi(email, password);
-      const token = response.accessToken;
-
-      // ✅ Decode JWT
-      const decoded = jwtDecode(token);
-
-      // ✅ Safely extract role
-      let role = null;
-      if (Array.isArray(decoded.roles) && decoded.roles.length > 0) {
-        role = decoded.roles[0].replace("ROLE_", "");
-      }
-
-      if (!role) {
-        throw new Error("Role not found in token");
-      }
-
-      // ✅ Store accessToken + role + refreshToken
-      login(token, role, response.refreshToken);
-
-      // ✅ Role-based navigation
-      if (role === "ADMIN") {
-        navigate("/admin");
-      } else if (role === "ANALYST") {
-        navigate("/analyst");
-      } else if (role === "ESG") {
-        navigate("/esg");
-      } else {
-        navigate("/login");
-      }
-
-      console.log("LOGIN SUCCESS ✅", role);
-
+      dispatch({ type: "SET_FORGOT_LOADING", payload: true });
+      // Backend generates and sends OTP via email, returns generic message
+      await requestPasswordReset(state.forgotEmail);
+      dispatch({ type: "SET_FORGOT_MESSAGE", payload: "OTP sent to your email. Check your inbox (including spam folder)." });
+      dispatch({ type: "SET_FORGOT_STEP", payload: "otp" });
     } catch (err) {
-      console.error("LOGIN FAILED ❌", err);
-      setError(err.response?.data?.message || "Login failed");
+      const errorMsg = err.response?.data?.message || "Failed to send reset email. Please try again.";
+      dispatch({ type: "SET_FORGOT_ERROR", payload: errorMsg });
+    } finally {
+      dispatch({ type: "SET_FORGOT_LOADING", payload: false });
     }
-  };
+  }, [state.forgotEmail]);
+
+  // Handle forgot password - step 2: validate OTP locally (no API call)
+  // OTP is verified server-side when submitted with password reset
+  const handleVerifyOtp = useCallback(() => {
+    dispatch({ type: "SET_FORGOT_ERROR", payload: "" });
+
+    if (!state.forgotOtp.trim()) {
+      dispatch({ type: "SET_FORGOT_ERROR", payload: "OTP is required" });
+      return;
+    }
+
+    if (state.forgotOtp.length !== 6) {
+      dispatch({ type: "SET_FORGOT_ERROR", payload: "OTP must be 6 digits" });
+      return;
+    }
+
+    if (!/^\d{6}$/.test(state.forgotOtp)) {
+      dispatch({ type: "SET_FORGOT_ERROR", payload: "OTP must contain only digits" });
+      return;
+    }
+
+    // OTP is valid format - proceed to password entry step (no API call needed)
+    dispatch({ type: "SET_FORGOT_MESSAGE", payload: "Please enter your new password." });
+    dispatch({ type: "SET_FORGOT_STEP", payload: "newPassword" });
+  }, [state.forgotOtp]);
+
+  // Handle forgot password - step 3: reset password
+  // Single API call with email, OTP, and new password
+  const handleResetPassword = useCallback(async () => {
+    dispatch({ type: "SET_FORGOT_ERROR", payload: "" });
+
+    if (!state.forgotNewPassword.trim()) {
+      dispatch({ type: "SET_FORGOT_ERROR", payload: "New password is required" });
+      return;
+    }
+
+    if (!validators.password(state.forgotNewPassword)) {
+      dispatch({ type: "SET_FORGOT_ERROR", payload: "Password must be at least 8 characters with uppercase, lowercase, number, and special character" });
+      return;
+    }
+
+    if (state.forgotNewPassword !== state.forgotConfirmPassword) {
+      dispatch({ type: "SET_FORGOT_ERROR", payload: "Passwords do not match" });
+      return;
+    }
+
+    try {
+      dispatch({ type: "SET_FORGOT_LOADING", payload: true });
+      // Submit email + OTP + new password together
+      // Backend verifies OTP and resets password
+      await resetPassword(state.forgotEmail, state.forgotOtp, state.forgotNewPassword);
+      dispatch({ type: "SET_FORGOT_MESSAGE", payload: "Password reset successfully! You can now login with your new password." });
+      setTimeout(() => {
+        dispatch({ type: "CLOSE_FORGOT_MODAL" });
+      }, 2000);
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || "Failed to reset password. Please try again.";
+      dispatch({ type: "SET_FORGOT_ERROR", payload: errorMsg });
+    } finally {
+      dispatch({ type: "SET_FORGOT_LOADING", payload: false });
+    }
+  }, [state.forgotEmail, state.forgotOtp, state.forgotNewPassword, state.forgotConfirmPassword]);
 
   return (
-    <form
-      onSubmit={handleLogin}
-      style={{
-        width: "320px",
-        margin: "120px auto",
-        padding: "24px",
-        border: "1px solid #e5e7eb",
-        borderRadius: "8px",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-      }}
-    >
-      <h2>Login</h2>
+    <div className={`login-container ${state.theme}`}>
+      <div className={`login-card ${state.theme}`}>
+        <div className="login-brand">
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label="Toggle dark and light mode"
+            title={`Switch to ${state.theme === "dark" ? "light" : "dark"} mode`}
+          >
+            {state.theme === "dark" ? "☀️" : "🌙"}
+          </button>
+          <p className="login-eyebrow">Welcome back</p>
+          <h1 className="login-title">GridInsight</h1>
+          <p className="login-subtitle">Secure access for grid operations</p>
+        </div>
 
-      {error && (
-        <p style={{ color: "red", fontSize: "14px" }}>
-          {error}
-        </p>
+        <form onSubmit={handleLogin} className="login-form">
+          {state.error && (
+            <div className="error-message" role="alert">
+              <span className="error-icon">⚠️</span>
+              {state.error}
+            </div>
+          )}
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="login-email">
+              Email Address
+              <span className="required">*</span>
+            </label>
+            <input
+              id="login-email"
+              type="email"
+              value={state.email}
+              onChange={(e) => dispatch({ type: "SET_EMAIL", payload: e.target.value })}
+              className={`form-input ${state.errorField === 'email' || state.errorField === 'both' ? 'input-error' : ''}`}
+              placeholder="john.doe@example.com"
+              required
+              disabled={state.isLoading}
+              autoComplete="email"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="login-password">
+              Password
+              <span className="required">*</span>
+            </label>
+            <div className={`password-input-wrapper ${state.errorField === 'password' || state.errorField === 'both' ? 'has-error' : ''}`}>
+              <input
+                id="login-password"
+                type={state.showPassword ? "text" : "password"}
+                value={state.password}
+                onChange={(e) => dispatch({ type: "SET_PASSWORD", payload: e.target.value })}
+                className={`form-input ${state.errorField === 'password' || state.errorField === 'both' ? 'input-error' : ''}`}
+                placeholder="Enter your password"
+                required
+                disabled={state.isLoading}
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => dispatch({ type: "TOGGLE_SHOW_PASSWORD" })}
+                title={state.showPassword ? "Hide password" : "Show password"}
+                disabled={state.isLoading}
+                aria-label={state.showPassword ? "Hide password" : "Show password"}
+              >
+                {state.showPassword ? "👁️" : "👁️‍🗨️"}
+              </button>
+            </div>
+          </div>
+
+          <div className="form-options">
+            <label className="remember-me">
+              <input
+                type="checkbox"
+                checked={state.rememberMe}
+                onChange={(e) => dispatch({ type: "SET_REMEMBER_ME", payload: e.target.checked })}
+                className="remember-checkbox"
+                disabled={state.isLoading}
+              />
+              <span>Remember me</span>
+            </label>
+            <button
+              type="button"
+              className="forgot-link"
+              onClick={() => {
+                // Check if email exists in login form
+                if (!state.email.trim()) {
+                  dispatch({ type: "SET_FORGOT_ERROR", payload: "Please fill in your email to reset password" });
+                  dispatch({ type: "OPEN_FORGOT_MODAL" });
+                } else {
+                  // Pre-fill forgot email from login form
+                  dispatch({ type: "SET_FORGOT_EMAIL", payload: state.email });
+                  dispatch({ type: "OPEN_FORGOT_MODAL" });
+                }
+              }}
+              disabled={state.isLoading}
+            >
+              Forgot Password?
+            </button>
+          </div>
+
+          <button
+            type="submit"
+            className="login-button"
+            disabled={state.isLoading || state.isLocked}
+          >
+            {state.isLoading ? (
+              <>
+                <span className="spinner"></span>
+                Signing In...
+              </>
+            ) : (
+              "Sign In"
+            )}
+          </button>
+
+          {state.isLocked && (
+            <div className="lockout-warning" role="alert">
+              <strong>Account temporarily locked</strong> - Too many failed attempts. Please try again in 15 minutes.
+            </div>
+          )}
+        </form>
+      </div>
+
+      {/* Forgot Password Modal */}
+      {state.showForgotModal && (
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="forgot-password-title"
+          onClick={() => dispatch({ type: "CLOSE_FORGOT_MODAL" })}
+        >
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 id="forgot-password-title">Reset Password</h3>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => dispatch({ type: "CLOSE_FORGOT_MODAL" })}
+                aria-label="Close modal"
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {state.forgotMessage && (
+              <div className="success-message" role="status">
+                <span className="success-icon">✓</span>
+                {state.forgotMessage}
+              </div>
+            )}
+
+            {state.forgotError && (
+              <div className="modal-error" role="alert">
+                <span className="error-icon">⚠️</span>
+                {state.forgotError}
+              </div>
+            )}
+
+            <div className="modal-body">
+                {/* STEP 1: Email (only show input if not pre-filled from login form) */}
+                {state.forgotStep === "email" && (
+                  <>
+                    <p className="modal-text">
+                      Enter your email address and we'll send you a verification code.
+                    </p>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="forgot-email">
+                        Email Address
+                        <span className="required">*</span>
+                      </label>
+                      <input
+                        id="forgot-email"
+                        type="email"
+                        value={state.forgotEmail}
+                        onChange={(e) => dispatch({ type: "SET_FORGOT_EMAIL", payload: e.target.value })}
+                        className="form-input"
+                        placeholder="Enter your email address"
+                        required
+                        disabled={state.forgotLoading}
+                        autoComplete="email"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="modal-button primary"
+                      disabled={state.forgotLoading || !state.forgotEmail.trim()}
+                      onClick={handleRequestPasswordReset}
+                    >
+                      {state.forgotLoading ? "Sending..." : "Send Code"}
+                    </button>
+                  </>
+                )}
+
+                {/* STEP 2: OTP */}
+                {state.forgotStep === "otp" && (
+                  <>
+                    <p className="modal-text">
+                      Enter the 6-digit code sent to your email.
+                    </p>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="forgot-otp">
+                        Verification Code
+                        <span className="required">*</span>
+                      </label>
+                      <input
+                        id="forgot-otp"
+                        type="text"
+                        inputMode="numeric"
+                        maxLength="6"
+                        value={state.forgotOtp}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, "");
+                          dispatch({ type: "SET_FORGOT_OTP", payload: val });
+                        }}
+                        className="form-input otp-input"
+                        placeholder="000000"
+                        required
+                        disabled={state.forgotLoading}
+                      />
+                    </div>
+                    <div className="modal-buttons">
+                      <button
+                        type="button"
+                        className="modal-button primary"
+                        disabled={state.forgotLoading}
+                        onClick={handleVerifyOtp}
+                      >
+                        {state.forgotLoading ? "Verifying..." : "Verify Code"}
+                      </button>
+                      <button
+                        type="button"
+                        className="modal-button secondary"
+                        disabled={state.forgotLoading}
+                        onClick={() => dispatch({ type: "SET_FORGOT_STEP", payload: "email" })}
+                      >
+                        Back
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* STEP 3: New Password */}
+                {state.forgotStep === "newPassword" && (
+                  <>
+                    <p className="modal-text">
+                      Enter your new password (minimum 6 characters).
+                    </p>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="forgot-new-password">
+                        New Password
+                        <span className="required">*</span>
+                      </label>
+                      <div className="password-input-wrapper">
+                        <input
+                          id="forgot-new-password"
+                          type={state.showForgotNewPassword ? "text" : "password"}
+                          value={state.forgotNewPassword}
+                          onChange={(e) => dispatch({ type: "SET_FORGOT_NEW_PASSWORD", payload: e.target.value })}
+                          className="form-input"
+                          placeholder="Enter new password"
+                          required
+                          disabled={state.forgotLoading}
+                          autoComplete="new-password"
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle"
+                          onClick={() => dispatch({ type: "TOGGLE_SHOW_FORGOT_NEW_PASSWORD" })}
+                          title={state.showForgotNewPassword ? "Hide password" : "Show password"}
+                          disabled={state.forgotLoading}
+                          aria-label={state.showForgotNewPassword ? "Hide password" : "Show password"}
+                        >
+                          {state.showForgotNewPassword ? "👁️" : "👁️‍🗨️"}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="forgot-confirm-password">
+                        Confirm Password
+                        <span className="required">*</span>
+                      </label>
+                      <div className="password-input-wrapper">
+                        <input
+                          id="forgot-confirm-password"
+                          type={state.showForgotConfirmPassword ? "text" : "password"}
+                          value={state.forgotConfirmPassword}
+                          onChange={(e) => dispatch({ type: "SET_FORGOT_CONFIRM_PASSWORD", payload: e.target.value })}
+                          className="form-input"
+                          placeholder="Confirm new password"
+                          required
+                          disabled={state.forgotLoading}
+                          autoComplete="new-password"
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle"
+                          onClick={() => dispatch({ type: "TOGGLE_SHOW_FORGOT_CONFIRM_PASSWORD" })}
+                          title={state.showForgotConfirmPassword ? "Hide password" : "Show password"}
+                          disabled={state.forgotLoading}
+                          aria-label={state.showForgotConfirmPassword ? "Hide password" : "Show password"}
+                        >
+                          {state.showForgotConfirmPassword ? "👁️" : "👁️‍🗨️"}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="modal-buttons">
+                      <button
+                        type="button"
+                        className="modal-button primary"
+                        disabled={state.forgotLoading}
+                        onClick={handleResetPassword}
+                      >
+                        {state.forgotLoading ? "Resetting..." : "Reset Password"}
+                      </button>
+                      <button
+                        type="button"
+                        className="modal-button secondary"
+                        disabled={state.forgotLoading}
+                        onClick={() => dispatch({ type: "SET_FORGOT_STEP", payload: "otp" })}
+                      >
+                        Back
+                      </button>
+                    </div>
+                  </>
+                )}
+            </div>
+          </div>
+        </div>
       )}
-
-      <div style={{ marginBottom: "10px" }}>
-        <label>Email</label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={{ width: "100%", padding: "8px" }}
-        />
-      </div>
-
-      <div style={{ marginBottom: "10px" }}>
-        <label>Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{ width: "100%", padding: "8px" }}
-        />
-      </div>
-
-      <button type="submit" style={{ width: "100%", padding: "8px" }}>
-        Login
-      </button>
-    </form>
+    </div>
   );
 }
