@@ -9,13 +9,39 @@ export default function CreateUser({ open, onClose, onCreated }) {
   const [role, setRole] = useState("GRID_ANALYST");
   const [tempPassword, setTempPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  // ✅ Do not render anything if modal is closed
+  // Do not render anything if modal is closed
   if (!open) return null;
 
+  // Email validation
+  const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  // Password validation (8+ chars, upper, lower, digit, special)
+  const isValidPassword = (password) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(password);
+
   const handleCreate = async () => {
-    if (!name.trim() || !email.trim() || !tempPassword.trim()) {
-      alert("Name, Email, and Temporary Password are required");
+    setError("");
+
+    // Validation
+    if (!name.trim()) {
+      setError("Name is required");
+      return;
+    }
+    if (!email.trim()) {
+      setError("Email is required");
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+    if (!tempPassword.trim()) {
+      setError("Temporary password is required");
+      return;
+    }
+    if (!isValidPassword(tempPassword)) {
+      setError("Password must be at least 8 characters with uppercase, lowercase, number, and special character");
       return;
     }
 
@@ -31,74 +57,118 @@ export default function CreateUser({ open, onClose, onCreated }) {
       setSaving(true);
       await adminApi.post("/users", payload);
 
-      // ✅ Reset form
+      // Reset form
       setName("");
       setEmail("");
       setPhone("");
       setRole("GRID_ANALYST");
       setTempPassword("");
+      setError("");
 
-      onCreated(); // ✅ refresh list
-      onClose();   // ✅ close modal
+      onCreated(); // refresh list
+      onClose();   // close modal
     } catch (err) {
       console.error("Create user failed", err);
-      alert(err.response?.data?.message || "Failed to create user");
+      setError(err.response?.data?.message || "Failed to create user. Please try again.");
     } finally {
       setSaving(false);
     }
   };
 
-  // ✅ MODAL IS RENDERED VIA PORTAL (THIS IS THE FIX)
+  const handleClose = () => {
+    setError("");
+    setName("");
+    setEmail("");
+    setPhone("");
+    setRole("GRID_ANALYST");
+    setTempPassword("");
+    onClose();
+  };
+
   return createPortal(
-    <div className="modal-overlay">
-      <div className="modal">
-        <h3>Create User</h3>
+    <div className="modal-overlay" onClick={handleClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Create User</h3>
+          <button className="modal-close-btn" onClick={handleClose} aria-label="Close">✕</button>
+        </div>
 
-        <label>Name</label>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+        {error && (
+          <div className="modal-error" role="alert">
+            <span className="error-icon">⚠️</span>
+            {error}
+          </div>
+        )}
 
-        <label>Email</label>
-        <input
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <div className="modal-body">
+          <div className="form-group">
+            <label>Name <span className="required">*</span></label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter full name"
+              disabled={saving}
+            />
+          </div>
 
-        <label>Phone</label>
-        <input
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
+          <div className="form-group">
+            <label>Email <span className="required">*</span></label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="user@example.com"
+              disabled={saving}
+            />
+          </div>
 
-        <label>Role</label>
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-        >
-          <option value="ADMIN">ADMIN</option>
-          <option value="GRID_ANALYST">GRID_ANALYST</option>
-          <option value="ASSET_MANAGER">ASSET_MANAGER</option>
-          <option value="PLANNER">PLANNER</option>
-          <option value="ESG">ESG</option>
-          <option value="OPERATOR">OPERATOR</option>
-          <option value="TECHNICIAN">TECHNICIAN</option>
-          <option value="ANALYST">ANALYST</option>
-        </select>
+          <div className="form-group">
+            <label>Phone</label>
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+91 XXXXX XXXXX"
+              disabled={saving}
+            />
+          </div>
 
-        <label>Temporary Password</label>
-        <input
-          type="password"
-          placeholder="User must change on first login"
-          value={tempPassword}
-          onChange={(e) => setTempPassword(e.target.value)}
-        />
+          <div className="form-group">
+            <label>Role <span className="required">*</span></label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              disabled={saving}
+            >
+              <option value="ADMIN">Admin</option>
+              <option value="GRID_ANALYST">Grid Analyst</option>
+              <option value="ASSET_MANAGER">Asset Manager</option>
+              <option value="PLANNER">Planner</option>
+              <option value="ESG">ESG Officer</option>
+              <option value="OPERATOR">Operator</option>
+              <option value="TECHNICIAN">Technician</option>
+              <option value="ANALYST">Analyst</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Temporary Password <span className="required">*</span></label>
+            <input
+              type="password"
+              placeholder="Min 8 chars with upper, lower, number, special"
+              value={tempPassword}
+              onChange={(e) => setTempPassword(e.target.value)}
+              disabled={saving}
+            />
+            <small className="form-hint">User must change this on first login</small>
+          </div>
+        </div>
 
         <div className="modal-actions">
-          <button onClick={onClose}>Cancel</button>
+          <button className="btn-secondary" onClick={handleClose} disabled={saving}>
+            Cancel
+          </button>
           <button
-            className="primary"
+            className="btn-primary"
             disabled={saving}
             onClick={handleCreate}
           >

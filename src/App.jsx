@@ -3,9 +3,10 @@ import LoginPage from "./pages/LoginPage";
 
 // Dashboards
 import AdminDashboard from "./dashboards/admin/AdminDashboard";
-import AnalystDashboard from "./pages/AnalystDashboard";
-import PlannerDashboard from "./pages/PlannerDashboard";
+import AnalystDashboard from "./pages/GridAnalystDashboard";
+import PlannerDashboard from "./dashboards/planner/PlannerDashboard"; // ✅ keep this one
 import ESGDashboard from "./pages/ESGDashboard";
+import AssetManagerDashboard from "./pages/AssetManagerDashboard";
 
 // Role-based Route Guard
 import RoleProtectedRoute from "./routes/RoleProtectedRoute";
@@ -31,7 +32,7 @@ function App() {
         <Route
           path="/analyst"
           element={
-            <RoleProtectedRoute allowedRoles={["ANALYST"]}>
+            <RoleProtectedRoute allowedRoles={["ANALYST", "OPERATOR"]}>
               <AnalystDashboard />
             </RoleProtectedRoute>
           }
@@ -53,6 +54,16 @@ function App() {
           element={
             <RoleProtectedRoute allowedRoles={["ESG"]}>
               <ESGDashboard />
+            </RoleProtectedRoute>
+          }
+        />
+
+        {/* Asset Dashboard */}
+        <Route
+          path="/asset-manager"
+          element={
+            <RoleProtectedRoute allowedRoles={["ASSET_MANAGER"]}>
+              <AssetManagerDashboard />
             </RoleProtectedRoute>
           }
         />
