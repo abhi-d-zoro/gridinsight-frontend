@@ -28,6 +28,7 @@ const initialFormState = {
   
   // UI state
   error: "",
+  errorField: "", // 'email', 'password', or '' for general errors
   isLoading: false,
   theme: "dark",
   
@@ -62,7 +63,7 @@ function formReducer(state, action) {
     case "TOGGLE_SHOW_PASSWORD":
       return { ...state, showPassword: !state.showPassword };
     case "SET_ERROR":
-      return { ...state, error: action.payload };
+      return { ...state, error: action.payload, errorField: action.field || "" };
     case "SET_IS_LOADING":
       return { ...state, isLoading: action.payload };
     case "SET_THEME":
@@ -180,10 +181,8 @@ export default function LoginPage() {
       return;
     }
 
-    if (!validators.password(state.password)) {
-      dispatch({ type: "SET_ERROR", payload: "Password must be at least 8 characters with uppercase, lowercase, number, and special character" });
-      return;
-    }
+    // Note: Don't validate password complexity on login - just send to server
+    // The server will respond with "invalid credentials" if wrong
 
     try {
       dispatch({ type: "SET_IS_LOADING", payload: true });
@@ -221,22 +220,71 @@ export default function LoginPage() {
     } catch (err) {
       dispatch({ type: "INCREMENT_LOGIN_ATTEMPTS" });
 
-      // Specific error messages
+      // Specific error messages with field detection
       let errorMsg = "Login failed. Please try again.";
+      let errorField = "";
       
-      if (err.response?.status === 401) {
-        errorMsg = "Invalid email or password";
-      } else if (err.response?.status === 429) {
+      // Get all possible error info from response
+      const status = err.response?.status;
+      const backendMsg = (err.response?.data?.message || err.response?.data?.error || "").toLowerCase();
+      const errorCode = err.response?.data?.code || "";
+      
+      // Log for debugging - remove in production
+      console.log("Login error:", { status, backendMsg, errorCode, fullData: err.response?.data });
+      
+      if (status === 401 || status === 400) {
+        // Check for email/user not found errors
+        if (
+          backendMsg.includes("user not found") || 
+          backendMsg.includes("no user") || 
+          backendMsg.includes("email not found") || 
+          backendMsg.includes("user does not exist") ||
+          backendMsg.includes("account not found") ||
+          backendMsg.includes("email does not exist") ||
+          backendMsg.includes("user with email") ||
+          backendMsg.includes("no account") ||
+          errorCode === "USER_NOT_FOUND" ||
+          errorCode === "EMAIL_NOT_FOUND"
+        ) {
+          errorMsg = "Email not found. Please check your email address.";
+          errorField = "email";
+        } 
+        // Check for password errors
+        else if (
+          backendMsg.includes("wrong password") || 
+          backendMsg.includes("incorrect password") || 
+          backendMsg.includes("password is incorrect") ||
+          backendMsg.includes("invalid password") ||
+          backendMsg.includes("password mismatch") ||
+          backendMsg.includes("password does not match") ||
+          errorCode === "WRONG_PASSWORD" ||
+          errorCode === "INVALID_PASSWORD"
+        ) {
+          errorMsg = "Incorrect password. Please try again.";
+          errorField = "password";
+        } 
+        // Generic bad credentials - default to both
+        else {
+          errorMsg = "Invalid email or password";
+          errorField = "both";
+        }
+      } else if (status === 404) {
+        errorMsg = "Email not found. Please check your email address.";
+        errorField = "email";
+      } else if (status === 429) {
         errorMsg = "Too many login attempts. Please try again later.";
+        errorField = "";
         dispatch({ type: "SET_IS_LOADING", payload: false });
         return;
       } else if (err.response?.data?.message) {
         errorMsg = err.response.data.message;
+        errorField = "both";
       } else if (err.message === "Network Error") {
         errorMsg = "Network error. Please check your connection and try again.";
+        errorField = "";
       }
 
-      dispatch({ type: "SET_ERROR", payload: errorMsg });
+      dispatch({ type: "SET_ERROR", payload: errorMsg, field: errorField });
 
       // Set lockout timer if rate limited
       if (state.loginAttempts + 1 >= 5) {
@@ -376,7 +424,7 @@ export default function LoginPage() {
               type="email"
               value={state.email}
               onChange={(e) => dispatch({ type: "SET_EMAIL", payload: e.target.value })}
-              className="form-input"
+              className={`form-input ${state.errorField === 'email' || state.errorField === 'both' ? 'input-error' : ''}`}
               placeholder="john.doe@example.com"
               required
               disabled={state.isLoading}
@@ -389,13 +437,13 @@ export default function LoginPage() {
               Password
               <span className="required">*</span>
             </label>
-            <div className="password-input-wrapper">
+            <div className={`password-input-wrapper ${state.errorField === 'password' || state.errorField === 'both' ? 'has-error' : ''}`}>
               <input
                 id="login-password"
                 type={state.showPassword ? "text" : "password"}
                 value={state.password}
                 onChange={(e) => dispatch({ type: "SET_PASSWORD", payload: e.target.value })}
-                className="form-input"
+                className={`form-input ${state.errorField === 'password' || state.errorField === 'both' ? 'input-error' : ''}`}
                 placeholder="Enter your password"
                 required
                 disabled={state.isLoading}
@@ -507,7 +555,7 @@ export default function LoginPage() {
 
             <div className="modal-body">
                 {/* STEP 1: Email (only show input if not pre-filled from login form) */}
-                {state.forgotStep === "email" && !state.forgotEmail && (
+                {state.forgotStep === "email" && (
                   <>
                     <p className="modal-text">
                       Enter your email address and we'll send you a verification code.
@@ -532,38 +580,10 @@ export default function LoginPage() {
                     <button
                       type="button"
                       className="modal-button primary"
-                      disabled={state.forgotLoading}
+                      disabled={state.forgotLoading || !state.forgotEmail.trim()}
                       onClick={handleRequestPasswordReset}
                     >
                       {state.forgotLoading ? "Sending..." : "Send Code"}
-                    </button>
-                  </>
-                )}
-
-                {/* STEP 1B: Auto-proceed if email was pre-filled from login */}
-                {state.forgotStep === "email" && state.forgotEmail && !state.forgotOtp && (
-                  <>
-                    <p className="modal-text">
-                      We'll send a verification code to <strong>{state.forgotEmail}</strong>
-                    </p>
-                    <button
-                      type="button"
-                      className="modal-button primary"
-                      disabled={state.forgotLoading}
-                      onClick={handleRequestPasswordReset}
-                    >
-                      {state.forgotLoading ? "Sending..." : "Send Code"}
-                    </button>
-                    <button
-                      type="button"
-                      className="modal-button secondary"
-                      disabled={state.forgotLoading}
-                      onClick={() => {
-                        dispatch({ type: "SET_FORGOT_EMAIL", payload: "" });
-                        dispatch({ type: "SET_FORGOT_ERROR", payload: "" });
-                      }}
-                    >
-                      Change Email
                     </button>
                   </>
                 )}
