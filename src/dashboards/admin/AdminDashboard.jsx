@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../auth/AuthContext";
 import DashboardLayout from "../../components/DashboardLayout";
 import UsersList from "./UserList";
+import AuditLogs from "./AuditLogs";
 import "./AdminDashboard.css";
 
 export default function AdminDashboard() {
@@ -72,14 +73,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {activeTab === "AUDIT_LOGS" && (
-          <div className="placeholder">
-            <div className="placeholder-icon">📋</div>
-            <h3>Audit Logs</h3>
-            <p>View detailed system activity logs and user actions.</p>
-            <button className="placeholder-btn">Coming Soon</button>
-          </div>
-        )}
+        {activeTab === "AUDIT_LOGS" && <AuditLogs />}
       </div>
     </DashboardLayout>
   );
