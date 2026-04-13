@@ -175,7 +175,7 @@ export default function AssetManagerDashboard() {
   };
 
   // RBAC guard - AFTER all hooks
-  if (role !== "ASSET_MANAGER" && role !== "ADMIN") {
+  if (role !== "ASSET_MANAGER" && role !== "ADMIN" && role !== "TECHNICIAN") {
     return (
       <div className="access-denied">
         <h2>Access Denied</h2>

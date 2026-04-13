@@ -4,6 +4,7 @@ import { AuthContext } from "../../auth/AuthContext";
 import DashboardLayout from "../../components/DashboardLayout";
 import UsersList from "./UserList";
 import AuditLogs from "./AuditLogs";
+import GridZoneList from "./GridZoneList";
 import "./AdminDashboard.css";
 
 export default function AdminDashboard() {
@@ -55,14 +56,7 @@ export default function AdminDashboard() {
       <div className="admin-content">
         {activeTab === "USERS" && <UsersList />}
 
-        {activeTab === "ZONES" && (
-          <div className="placeholder">
-            <div className="placeholder-icon">⚡</div>
-            <h3>Grid Zones Management</h3>
-            <p>Manage and monitor electrical grid zones and their configuration.</p>
-            <button className="placeholder-btn">Coming Soon</button>
-          </div>
-        )}
+        {activeTab === "ZONES" && <GridZoneList />}
 
         {activeTab === "ALERTS" && (
           <div className="placeholder">

@@ -214,6 +214,7 @@ export default function LoginPage() {
         "PLANNER": "/planner",
         "ESG": "/esg",
         "ASSET_MANAGER": "/asset-manager",
+        "TECHNICIAN": "/asset-manager",
       };
 
       navigate(roleRoutes[role] || "/login");
