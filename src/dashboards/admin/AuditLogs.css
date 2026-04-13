@@ -250,6 +250,22 @@
   color: #94a3b8;
 }
 
+.loading-state p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(148, 163, 184, 0.2);
+  border-top-color: #22c55e;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
 .loading-spinner {
   width: 40px;
   height: 40px;
@@ -298,6 +314,33 @@
   color: #ef4444;
   font-size: 14px;
   margin-bottom: 20px;
+}
+
+.error-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 16px;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.error-close:hover {
+  opacity: 1;
+}
+
+.btn-clear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.filter-group input:disabled,
+.filter-group select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* ============================================

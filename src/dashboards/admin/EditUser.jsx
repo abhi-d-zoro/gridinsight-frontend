@@ -140,13 +140,10 @@ export default function EditUser({ user, open, onClose, onUpdated }) {
               disabled={saving}
             >
               <option value="ADMIN">Admin</option>
-              <option value="GRID_ANALYST">Grid Analyst</option>
               <option value="ASSET_MANAGER">Asset Manager</option>
-              <option value="PLANNER">Planner</option>
-              <option value="ESG">ESG Officer</option>
+              <option value="ESG">ESG</option>
               <option value="OPERATOR">Operator</option>
-              <option value="TECHNICIAN">Technician</option>
-              <option value="ANALYST">Analyst</option>
+              <option value="PLANNER">Planner</option>
             </select>
           </div>
 

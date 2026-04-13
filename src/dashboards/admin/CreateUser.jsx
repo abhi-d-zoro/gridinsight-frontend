@@ -6,7 +6,7 @@ export default function CreateUser({ open, onClose, onCreated }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [role, setRole] = useState("GRID_ANALYST");
+  const [role, setRole] = useState("OPERATOR");
   const [tempPassword, setTempPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -61,7 +61,7 @@ export default function CreateUser({ open, onClose, onCreated }) {
       setName("");
       setEmail("");
       setPhone("");
-      setRole("GRID_ANALYST");
+      setRole("OPERATOR");
       setTempPassword("");
       setError("");
 
@@ -80,7 +80,7 @@ export default function CreateUser({ open, onClose, onCreated }) {
     setName("");
     setEmail("");
     setPhone("");
-    setRole("GRID_ANALYST");
+    setRole("OPERATOR");
     setTempPassword("");
     onClose();
   };
@@ -140,13 +140,10 @@ export default function CreateUser({ open, onClose, onCreated }) {
               disabled={saving}
             >
               <option value="ADMIN">Admin</option>
-              <option value="GRID_ANALYST">Grid Analyst</option>
               <option value="ASSET_MANAGER">Asset Manager</option>
-              <option value="PLANNER">Planner</option>
-              <option value="ESG">ESG Officer</option>
+              <option value="ESG">ESG</option>
               <option value="OPERATOR">Operator</option>
-              <option value="TECHNICIAN">Technician</option>
-              <option value="ANALYST">Analyst</option>
+              <option value="PLANNER">Planner</option>
             </select>
           </div>
 
