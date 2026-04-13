@@ -165,7 +165,7 @@ export default function ESGDashboard() {
     }))
   };
 
-  // RBAC guard - AFTER all hooks
+  // RBAC guard
   if (
     role !== "ESG" &&
     role !== "ROLE_ESG_OFFICER" &&
@@ -202,7 +202,7 @@ export default function ESGDashboard() {
 
           {/* Message Alert */}
           {message && (
-            <div className={`message-alert ${message.includes("Error") || message.includes("Failed") ? 'error' : 'success'}`}>
+            <div className={`message-alert ${message.includes("Failed") ? 'error' : 'success'}`}>
               {message}
               <button className="alert-close" onClick={() => setMessage("")}>✕</button>
             </div>
@@ -233,7 +233,7 @@ export default function ESGDashboard() {
             <div>
               <h3>Environmental Impact Overview</h3>
               
-              {/* Summary KPIs */}
+              {/* Summary KPIs mapped to DashboardSummary DTO but keeping original theme */}
               <div className="kpi-grid" style={{ marginBottom: '24px' }}>
                 <div className="kpi-card highlight">
                   <h5>🌱 CO2 Emissions Avoided</h5>
