@@ -25,7 +25,7 @@ export default function CapacityPlans() {
       horizon: planHorizon,
       recommendedCapacityMw: planCapacity,
       planVersion: planVersion,
-      description: planDescription
+      notes: planDescription
     })
       .then(() => {
         axiosInstance.get("/api/v1/capacity-plans")
@@ -99,7 +99,7 @@ export default function CapacityPlans() {
                 <td>{plan.horizon}</td>
                 <td>{plan.recommendedCapacityMw}</td>
                 <td>{plan.planVersion}</td>
-                <td>{plan.description}</td>
+                <td>{plan.notes}</td>
                 <td>
                   <button className="btn-secondary btn-sm" onClick={() => handleExportPdf(plan.id)}>Export PDF</button>
                 </td>
