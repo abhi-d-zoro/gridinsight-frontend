@@ -5,6 +5,7 @@ import DashboardLayout from "../../components/DashboardLayout";
 import UsersList from "./UserList";
 import AuditLogs from "./AuditLogs";
 import GridZoneList from "./GridZoneList";
+import ActiveAlerts from "./ActiveAlerts";
 import "./AdminDashboard.css";
 
 export default function AdminDashboard() {
@@ -58,14 +59,7 @@ export default function AdminDashboard() {
 
         {activeTab === "ZONES" && <GridZoneList />}
 
-        {activeTab === "ALERTS" && (
-          <div className="placeholder">
-            <div className="placeholder-icon">🚨</div>
-            <h3>Active Alerts</h3>
-            <p>Monitor and manage system alerts and notifications in real-time.</p>
-            <button className="placeholder-btn">Coming Soon</button>
-          </div>
-        )}
+        {activeTab === "ALERTS" && <ActiveAlerts />}
 
         {activeTab === "AUDIT_LOGS" && <AuditLogs />}
       </div>
