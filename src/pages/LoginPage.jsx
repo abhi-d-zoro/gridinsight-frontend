@@ -190,7 +190,7 @@ export default function LoginPage() {
       const response = await loginApi(state.email, state.password);
       const token = response.accessToken;
       const decoded = jwtDecode(token);
-
+ 
       const role = decoded.roles?.[0]?.replace("ROLE_", "");
       if (!role) throw new Error("Role information missing from token");
 
@@ -214,6 +214,7 @@ export default function LoginPage() {
         "PLANNER": "/planner",
         "ESG": "/esg",
         "ASSET_MANAGER": "/asset-manager",
+        "TECHNICIAN": "/asset-manager",
       };
 
       navigate(roleRoutes[role] || "/login");

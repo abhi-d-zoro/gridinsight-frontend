@@ -62,7 +62,7 @@ function App() {
         <Route
           path="/asset-manager"
           element={
-            <RoleProtectedRoute allowedRoles={["ASSET_MANAGER"]}>
+            <RoleProtectedRoute allowedRoles={["ASSET_MANAGER", "TECHNICIAN"]}>
               <AssetManagerDashboard />
             </RoleProtectedRoute>
           }

@@ -25,7 +25,6 @@ ChartJS.register(
 );
 
 export default function Overview() {
-  const [dayAhead, setDayAhead] = useState(null);
   const [monthAhead, setMonthAhead] = useState(null);
   const [capacityPlans, setCapacityPlans] = useState([]);
   const [accuracy, setAccuracy] = useState(null);
@@ -42,15 +41,13 @@ export default function Overview() {
       setLoading(true);
 
       const results = await Promise.allSettled([
-        axiosInstance.get("/api/v1/forecast/day-ahead", { params: { zoneId, date: selectedDate } }),
         axiosInstance.get("/api/v1/forecast/month-ahead", { params: { assetType: "SOLAR" } }),
         axiosInstance.get("/api/v1/capacity-plans"),
         axiosInstance.get("/api/v1/forecast/accuracy", { params: { zoneId, date: selectedDate } }),
       ]);
 
-      const [dayRes, monthRes, capRes, accRes] = results;
+      const [monthRes, capRes, accRes] = results;
 
-      if (dayRes.status === "fulfilled") setDayAhead(dayRes.value.data);
       if (monthRes.status === "fulfilled") setMonthAhead(monthRes.value.data);
       if (capRes.status === "fulfilled") setCapacityPlans(capRes.value.data);
       if (accRes.status === "fulfilled") setAccuracy(accRes.value.data);
@@ -83,7 +80,7 @@ export default function Overview() {
       {loading && <p>Loading overview data...</p>}
 
       {/* KPI Cards */}
-      {(accuracy || capacityPlans.length > 0 || dayAhead) && (
+      {(accuracy || capacityPlans.length > 0) && (
         <div className="kpi-cards">
           <div className="kpi-card">
             <h3>Overall MAPE</h3>
@@ -93,40 +90,7 @@ export default function Overview() {
             <h3>Capacity Plans</h3>
             <p>{capacityPlans.length} plans</p>
           </div>
-          <div className="kpi-card">
-            <h3>Day-Ahead Forecast</h3>
-            <p>{dayAhead ? "Available" : "No data"}</p>
-          </div>
         </div>
-      )}
-
-      {/* Day-Ahead Forecast Chart */}
-      {Array.isArray(dayAhead?.hourlyData) && (
-        <Line
-          data={{
-            labels: dayAhead.hourlyData.map((row) => `Hour ${row.hour}`),
-            datasets: [
-              {
-                label: "Forecast (MW)",
-                data: dayAhead.hourlyData.map((row) => row.forecastValueMW ?? 0),
-                borderColor: "rgba(75,192,192,1)",
-                tension: 0.3,
-              },
-              {
-                label: "Actual (MW)",
-                data: dayAhead.hourlyData.map((row) => row.actualValueMW ?? 0),
-                borderColor: "rgba(255,99,132,1)",
-                tension: 0.3,
-              },
-            ],
-          }}
-          options={{
-            responsive: true,
-            plugins: {
-              title: { display: true, text: "Day-Ahead Forecast vs Actual" },
-            },
-          }}
-        />
       )}
 
       {/* Month-Ahead Forecast Chart */}
@@ -209,7 +173,6 @@ export default function Overview() {
       )}
 
       {!loading &&
-        !dayAhead &&
         !monthAhead &&
         capacityPlans.length === 0 &&
         !accuracy && <p>No overview data available</p>}

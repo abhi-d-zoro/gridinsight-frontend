@@ -678,6 +678,7 @@
 .modal {
   width: 100%;
   max-width: 450px;
+  max-height: calc(100vh - 40px);
   background: #ffffff;
   border: 1px solid rgba(15, 23, 42, 0.08);
   padding: 28px;
@@ -687,6 +688,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow: hidden;
 }
 
 .dashboard-page.dark .modal {
@@ -767,6 +769,7 @@
   margin-top: 20px;
   border-top: 1px solid rgba(15, 23, 42, 0.08);
   padding-top: 18px;
+  flex-shrink: 0;
 }
 
 .dashboard-page.dark .modal-actions {
@@ -892,6 +895,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .modal-header h3 {
@@ -929,6 +933,9 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .modal-body .form-group {
