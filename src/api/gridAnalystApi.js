@@ -37,11 +37,11 @@ export const fetchGenerationHistory = (params) => gridAnalystApi.get("/generatio
 export const fetchGridZones = () => gridAnalystApi.get("/admin/grid-zones");
 
 // Alerts APIs
-export const fetchActiveAlerts = () => gridAnalystApi.get("/alerts/active");
-export const fetchAllAlerts = (params) => gridAnalystApi.get("/alerts", { params });
-export const acknowledgeAlert = (alertId) => gridAnalystApi.put(`/alerts/${alertId}/acknowledge`);
-export const resolveAlert = (alertId, notes) => gridAnalystApi.put(`/alerts/${alertId}/resolve`, { notes });
-export const createAlert = (alertData) => gridAnalystApi.post("/alerts", alertData);
+export const fetchAllAlerts = () => gridAnalystApi.get("/system/alerts");
+export const fetchAlertById = (alertId) => gridAnalystApi.get(`/system/alerts/${alertId}`);
+export const acknowledgeAlert = (alertId) => gridAnalystApi.post(`/alerts/${alertId}/acknowledge`, {});
+export const closeAlert = (alertId, resolutionNote) => gridAnalystApi.post(`/alerts/${alertId}/close`, { resolutionNote });
+export const fetchAlertActivity = (alertId) => gridAnalystApi.get(`/alerts/${alertId}/activity`);
 
 // Forecasting APIs
 export const fetchDayAheadForecast = (params) => gridAnalystApi.get("/forecast/day-ahead", { params });
