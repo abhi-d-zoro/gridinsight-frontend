@@ -2,7 +2,6 @@ import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../auth/AuthContext";
 import DashboardLayout from "../../components/DashboardLayout";
-import Overview from "./Overview";
 import DayAheadJobs from "./DayAheadJobs";
 import MonthAheadForecast from "./MonthAheadForecast";
 import CapacityPlans from "./CapacityPlans";
@@ -12,7 +11,7 @@ import "./PlannerDashboard.css";
 export default function PlannerDashboard() {
   const { logout, role } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("dayAhead");
   const [zoneFilter, setZoneFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [assetType, setAssetType] = useState("SOLAR");
@@ -24,7 +23,6 @@ export default function PlannerDashboard() {
   };
 
   const tabs = [
-    { id: "overview", label: "Overview", icon: "📊", description: "Dashboard overview and key metrics" },
     { id: "dayAhead", label: "Day-Ahead Forecast", icon: "📅", description: "Day-ahead forecasting and planning" },
     { id: "monthAhead", label: "Month-Ahead Forecast", icon: "📈", description: "Month-ahead forecasting analysis" },
     { id: "capacity", label: "Capacity Plans", icon: "⚡", description: "Capacity planning and management" },
@@ -62,7 +60,6 @@ export default function PlannerDashboard() {
       <div className="planner-content">
         {/* Content Area */}
         <div className="planner-content-area">
-          {activeTab === "overview" && <Overview accuracy={accuracy} />}
           {activeTab === "dayAhead" && (
             <DayAheadJobs
               zoneFilter={zoneFilter}
