@@ -40,7 +40,7 @@ export default function PlannerDashboard() {
     }))
   };
 
-  // RBAC guard - AFTER all hooks
+
   if (role !== "PLANNER" && role !== "ADMIN") {
     return (
       <div className="access-denied">

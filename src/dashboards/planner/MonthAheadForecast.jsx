@@ -35,9 +35,8 @@ export default function MonthAheadForecast({ assetType, setAssetType }) {
   // form states
   const [forecastDate, setForecastDate] = useState("");
   const [forecastValue, setForecastValue] = useState("");
-  const [zoneId, setZoneId] = useState("101");
 
-  // 🔹 Fetch forecasts
+  // Fetch forecasts
   useEffect(() => {
     axiosInstance
   .get("/api/v1/forecast/month-ahead", { params: { assetType } })
@@ -53,7 +52,7 @@ export default function MonthAheadForecast({ assetType, setAssetType }) {
       
   }, [assetType]);
 
-  // 🔹 Insert new forecast
+  // Insert new forecast
   const handleInsertForecast = () => {
     if (!assetType || !forecastDate || !forecastValue) {
       alert("Please fill required fields");
@@ -63,7 +62,6 @@ export default function MonthAheadForecast({ assetType, setAssetType }) {
     axiosInstance
       .post("/api/v1/forecast/month-ahead", {
         assetType,
-        zoneId,
         forecastDate,
         forecastValue: forecastValue
       })
@@ -111,12 +109,6 @@ export default function MonthAheadForecast({ assetType, setAssetType }) {
           placeholder="Forecast MW"
           value={forecastValue}
           onChange={(e) => setForecastValue(e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Zone ID"
-          value={zoneId}
-          onChange={(e) => setZoneId(e.target.value)}
         />
         <button className="btn-primary" onClick={handleInsertForecast}>
           Add Forecast
