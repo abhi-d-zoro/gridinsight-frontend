@@ -71,7 +71,6 @@ axiosInstance.interceptors.response.use(
       const refreshToken = localStorage.getItem("refreshToken");
 
       try {
-        // ✅ FIXED: Use axios directly to avoid circular dependency
         const response = await axios.post(
           "http://localhost:8081/api/v1/auth/refresh",
           { refreshToken }

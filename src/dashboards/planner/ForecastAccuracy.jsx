@@ -21,7 +21,7 @@ export default function ForecastAccuracy({ zoneFilter, setZoneFilter, dateFilter
       .finally(() => setLoading(false));
   };
 
-  // 🔑 New: Export accuracy data as CSV
+
   const handleExportCSV = () => {
     if (!accuracy || !accuracy.hourlyData || accuracy.hourlyData.length === 0) {
       alert("No accuracy data available to export");

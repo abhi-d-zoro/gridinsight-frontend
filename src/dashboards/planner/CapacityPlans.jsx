@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, version } from "react";
 import axiosInstance from "../../api/axiosInstance";
 
 export default function CapacityPlans() {
   const [plans, setPlans] = useState([]);
   const [planZone, setPlanZone] = useState("");
   const [planHorizon, setPlanHorizon] = useState("");
-  const [planCapacity, setPlanCapacity] = useState("");
   const [planVersion, setPlanVersion] = useState("");
+  const [planCapacity, setPlanCapacity] = useState("");
   const [planDescription, setPlanDescription] = useState("");
 
   useEffect(() => {
@@ -16,7 +16,7 @@ export default function CapacityPlans() {
   }, []);
 
   const handleInsertPlan = () => {
-    if (!planZone || !planHorizon || !planCapacity || !planVersion) {
+    if (!planZone || !planHorizon || !planCapacity ) {
       alert("Please fill all fields for capacity plan");
       return;
     }
@@ -24,7 +24,7 @@ export default function CapacityPlans() {
       zoneId: planZone,
       horizon: planHorizon,
       recommendedCapacityMw: planCapacity,
-      planVersion: planVersion,
+      // version: planVersion,
       notes: planDescription
     })
       .then(() => {
@@ -33,13 +33,13 @@ export default function CapacityPlans() {
         setPlanZone("");
         setPlanHorizon("");
         setPlanCapacity("");
-        setPlanVersion("");
+        // setPlanVersion("");
         setPlanDescription("");
       })
       .catch(err => console.error("Error inserting plan:", err));
   };
 
-  // 🔑 Export a single plan by ID
+  //  Export a single plan by ID
   const handleExportPdf = async (id) => {
     try {
       const response = await axiosInstance.get(`/api/v1/capacity-plans/${id}/export-pdf`, {
@@ -73,9 +73,6 @@ export default function CapacityPlans() {
         </div>
         <div className="form-group">
           <input type="number" placeholder="Capacity MW" value={planCapacity} onChange={e => setPlanCapacity(e.target.value)} />
-        </div>
-        <div className="form-group">
-          <input type="text" placeholder="Version" value={planVersion} onChange={e => setPlanVersion(e.target.value)} />
         </div>
         <div className="form-group">
           <input type="text" placeholder="Description" value={planDescription} onChange={e => setPlanDescription(e.target.value)} />

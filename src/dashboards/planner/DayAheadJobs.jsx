@@ -68,12 +68,12 @@ export default function DayAheadJobs({ zoneFilter, setZoneFilter, dateFilter, se
         <button className="btn-success" onClick={handleInsert}>Run Forecast</button>
       </div>
 
-      {/* NEW: Update Status Button */}
+  
       <div className="sidebar-action">
         <button className="btn-warning" onClick={() => setShowModal(true)}>Update Status</button>
       </div>
 
-      {/* Modal */}
+ 
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-content">
