@@ -116,11 +116,10 @@ export default function LoginPage() {
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
   const lockoutTimerRef = useRef(null);
-  const rememberEmailRef = useRef(null);
 
   // Initialize theme and remember me
   useEffect(() => {
-    const savedTheme = localStorage.getItem("loginTheme");
+    const savedTheme = localStorage.getItem("theme");
     if (savedTheme === "light" || savedTheme === "dark") {
       dispatch({ type: "SET_THEME", payload: savedTheme });
     }
@@ -133,9 +132,9 @@ export default function LoginPage() {
     }
   }, []);
 
-  // Save theme to localStorage
+  // Save theme to localStorage (synced with dashboard)
   useEffect(() => {
-    localStorage.setItem("loginTheme", state.theme);
+    localStorage.setItem("theme", state.theme);
   }, [state.theme]);
 
   // Cleanup rate limiting timer on unmount
@@ -230,8 +229,7 @@ export default function LoginPage() {
       const backendMsg = (err.response?.data?.message || err.response?.data?.error || "").toLowerCase();
       const errorCode = err.response?.data?.code || "";
       
-      // Log for debugging - remove in production
-      console.log("Login error:", { status, backendMsg, errorCode, fullData: err.response?.data });
+      // Debug logging removed for production
       
       if (status === 401 || status === 400) {
         // Check for email/user not found errors
@@ -362,6 +360,11 @@ export default function LoginPage() {
       return;
     }
 
+    if (!state.forgotConfirmPassword.trim()) {
+      dispatch({ type: "SET_FORGOT_ERROR", payload: "Please confirm your password" });
+      return;
+    }
+
     if (!validators.password(state.forgotNewPassword)) {
       dispatch({ type: "SET_FORGOT_ERROR", payload: "Password must be at least 8 characters with uppercase, lowercase, number, and special character" });
       return;
@@ -478,15 +481,11 @@ export default function LoginPage() {
               type="button"
               className="forgot-link"
               onClick={() => {
-                // Check if email exists in login form
-                if (!state.email.trim()) {
-                  dispatch({ type: "SET_FORGOT_ERROR", payload: "Please fill in your email to reset password" });
-                  dispatch({ type: "OPEN_FORGOT_MODAL" });
-                } else {
-                  // Pre-fill forgot email from login form
+                // Pre-fill forgot email from login form if available
+                if (state.email.trim()) {
                   dispatch({ type: "SET_FORGOT_EMAIL", payload: state.email });
-                  dispatch({ type: "OPEN_FORGOT_MODAL" });
                 }
+                dispatch({ type: "OPEN_FORGOT_MODAL" });
               }}
               disabled={state.isLoading}
             >
@@ -520,7 +519,7 @@ export default function LoginPage() {
       {/* Forgot Password Modal */}
       {state.showForgotModal && (
         <div
-          className="modal-overlay"
+          className={`modal-overlay ${state.theme}`}
           role="dialog"
           aria-modal="true"
           aria-labelledby="forgot-password-title"
@@ -558,9 +557,6 @@ export default function LoginPage() {
                 {/* STEP 1: Email (only show input if not pre-filled from login form) */}
                 {state.forgotStep === "email" && (
                   <>
-                    <p className="modal-text">
-                      Enter your email address and we'll send you a verification code.
-                    </p>
                     <div className="form-group">
                       <label className="form-label" htmlFor="forgot-email">
                         Email Address
@@ -592,9 +588,6 @@ export default function LoginPage() {
                 {/* STEP 2: OTP */}
                 {state.forgotStep === "otp" && (
                   <>
-                    <p className="modal-text">
-                      Enter the 6-digit code sent to your email.
-                    </p>
                     <div className="form-group">
                       <label className="form-label" htmlFor="forgot-otp">
                         Verification Code
@@ -640,9 +633,6 @@ export default function LoginPage() {
                 {/* STEP 3: New Password */}
                 {state.forgotStep === "newPassword" && (
                   <>
-                    <p className="modal-text">
-                      Enter your new password (minimum 6 characters).
-                    </p>
                     <div className="form-group">
                       <label className="form-label" htmlFor="forgot-new-password">
                         New Password
