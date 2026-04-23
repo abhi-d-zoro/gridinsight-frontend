@@ -6,6 +6,10 @@ import UsersList from "./UserList";
 import AuditLogs from "./AuditLogs";
 import GridZoneList from "./GridZoneList";
 import ActiveAlerts from "./ActiveAlerts";
+
+import AssetManager from "./AssetManager";
+import ThresholdManager from "./ThresholdManager";
+import ReportManager from "./ReportManager";
 import "./AdminDashboard.css";
 
 export default function AdminDashboard() {
@@ -22,6 +26,9 @@ export default function AdminDashboard() {
   const tabs = [
     { id: "USERS", label: "Manage Users", icon: "👥", description: "Add, edit, or remove system users" },
     { id: "ZONES", label: "Grid Zones", icon: "⚡", description: "Manage electrical grid zones" },
+    { id: "ASSETS", label: "Assets", icon: "🔋", description: "Manage renewable and grid assets" },
+    { id: "THRESHOLDS", label: "Thresholds", icon: "📏", description: "Configure alert thresholds and rules" },
+    { id: "REPORTS", label: "Reports", icon: "📊", description: "Generate and manage ESG and audit reports" },
     { id: "ALERTS", label: "Active Alerts", icon: "🚨", description: "Monitor system alerts" },
     { id: "AUDIT_LOGS", label: "Audit Logs", icon: "📋", description: "View system activity logs" },
   ];
@@ -58,6 +65,13 @@ export default function AdminDashboard() {
         {activeTab === "USERS" && <UsersList />}
 
         {activeTab === "ZONES" && <GridZoneList />}
+
+
+        {activeTab === "ASSETS" && <AssetManager />}
+
+        {activeTab === "THRESHOLDS" && <ThresholdManager />}
+
+        {activeTab === "REPORTS" && <ReportManager />}
 
         {activeTab === "ALERTS" && <ActiveAlerts />}
 

@@ -7,24 +7,30 @@ export default function Header({
   showAuditLogs = false,
   showNotifications = false,
 }) {
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem("theme");
+    return savedTheme === "light" || savedTheme === "dark" ? savedTheme : "dark";
+  });
 
+  // Listen for theme changes from other components/tabs
   useEffect(() => {
-    const loadTheme = () => {
-      const savedTheme = localStorage.getItem("dashboardTheme");
-      if (savedTheme === "light" || savedTheme === "dark") {
-        setTheme(savedTheme);
+    const handleStorageChange = (e) => {
+      if (e.key === "theme" && (e.newValue === "light" || e.newValue === "dark")) {
+        setTheme(e.newValue);
       }
     };
 
-    loadTheme();
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
+  // Save theme and apply to dashboard
   useEffect(() => {
-    localStorage.setItem("dashboardTheme", theme);
+    localStorage.setItem("theme", theme);
     const dashboardPage = document.querySelector(".dashboard-page");
     if (dashboardPage) {
-      dashboardPage.classList.toggle("dark", theme === "dark");
+      dashboardPage.classList.remove("dark", "light");
+      dashboardPage.classList.add(theme);
     }
   }, [theme]);
 
